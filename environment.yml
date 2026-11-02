@@ -1,0 +1,54 @@
+# onsight build environment.
+#
+#   conda env create -f environment.yml
+#   conda activate onsight
+#   make
+#
+# Linux only. environment.yml does not support platform selectors, and
+# sysroot_linux-64 does not exist on macOS.
+#
+# Why sysroot_linux-64=2.17:
+#   conda-forge's compilers target whatever sysroot is installed, and that sets the
+#   MINIMUM glibc the resulting binary requires -- independent of the host. The default
+#   (2.34) produces binaries that will not run on RHEL 8 (glibc 2.28). Pinning 2.17
+#   (conda-forge's own portability baseline, and what libstdc++ targets) yields one
+#   binary that runs on every machine we use.
+#
+# Why hdf5=1.14.3:
+#   the VBZ plugin's builds for HDF5 1.14 need exactly 1.14.3, and it is the version with a
+#   plugin build for both linux-64 and linux-aarch64. src/hdf5_tools.hpp carries
+#   H5_VERSION_GE(1, 12, 0) guards for the H5Oget_info signature change, but nothing
+#   anticipating HDF5 2.x. 1.14.3 gives the same outputs as 1.12 (checked 2026-10-28 on
+#   VBZ and gzip FAST5). Do not bump without testing.
+#
+# Why ont_vbz_hdf_plugin:
+#   FAST5 files written by MinKNOW since about 2020 store the signal VBZ-compressed;
+#   HDF5 reads them only with ONT's plugin, which conda finds through HDF5_PLUGIN_PATH
+#   (set when the environment is activated). POD5 and SLOW5/BLOW5 do not need it.
+#
+# Not available from conda, handled by `make`:
+#   slow5lib  -- no conda package exists (`slow5tools` is the CLI, not the library);
+#                built from extern/slow5lib
+#   POD5      -- conda's `pod5` is a noarch Python package, not the C static libs;
+#                downloaded as a prebuilt tarball at build time
+name: onsight
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  # Toolchain. c-compiler/cxx-compiler are metapackages that resolve per-platform.
+  - c-compiler
+  - cxx-compiler
+  - sysroot_linux-64=2.17
+
+  # Build tools
+  - make
+
+  # Signal-format and compression libraries
+  - hdf5=1.14.3        # FAST5
+  - bioconda::ont_vbz_hdf_plugin   # VBZ-compressed FAST5
+  - zstd>=1.5          # needed by POD5 (8 undefined ZSTD_* symbols) and SLOW5
+  - zlib
+

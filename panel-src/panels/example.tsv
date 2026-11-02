@@ -1,0 +1,3 @@
+set	build	short	name	input	target	neg_cap	target_cap	lineages_of	lineages	report_as	panel	mock_label	reference_genome	lineage_representative	keep_off	test_strains	extra_near_strains
+Klebsiella_pneumoniae	Klebsiella_pneumoniae_vs_genus	Klebsiella_pneumoniae	K. pneumoniae	Klebsiella_pneumoniae_vs_genus		50	1000			Klebsiella pneumoniae	example						
+Staphylococcus_aureus	Staphylococcus_aureus_vs_genus	Staphylococcus_aureus	S. aureus	Staphylococcus_aureus_vs_genus		50	1000			Staphylococcus aureus	example						

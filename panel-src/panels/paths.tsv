@@ -1,0 +1,15 @@
+key	value
+inputs	/dodo/eh58/squiggle/s2s/benchmark/runs/2026-10-27_panel_rebuild_check/inputs
+background	/dodo/eh58/squiggle/s2s/benchmark/runs/2026-10-19_allgenome-background/genomes.tsv
+taxdump	/dodo/eh58/squiggle/data/ref/ncbi_taxdump_20261021
+mock_genomes	/dodo/eh58/bakeoff/data/ZymoMockD6331/ZymoRef/D6331.refseq/genomes,/dodo/eh58/squiggle/data/ref/ZymoMockHMW/D6322.refseq/Genomes
+mock_strains	mock_strains.tsv
+skani	/home/Users/eh58/miniconda3/envs/squiggle/bin/skani
+seqwin_python	/home/Users/eh58/miniconda3/envs/seqwin/bin/python3
+refseq_summary	/dodo/eh58/squiggle/data/assembly_summary_refseq_v228.txt
+refseq_libraries	/dodo/eh58/bakeoff/data/ref_db/refseq03032025/library/bacteria
+d6322_genomes	/dodo/eh58/squiggle/data/ref/ZymoMockHMW/D6322.refseq/Genomes
+zymo_std_genomes	/dodo/eh58/squiggle/data/ref/ZymoMockEvenLog/ZymoBIOMICS.STD.refseq.v2/Genomes
+blastn	/home/Users/eh58/miniconda3/bin/blastn
+makeblastdb	/home/Users/eh58/miniconda3/bin/makeblastdb
+onsight	../../bin/onsight

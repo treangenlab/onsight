@@ -1,0 +1,13 @@
+key	value
+inputs	inputs
+background	background.tsv
+taxdump	taxdump
+refseq_summary	refseq/assembly_summary_refseq.txt
+refseq_libraries	refseq/library/bacteria
+seqwin_python	/path/to/conda/envs/seqwin/bin/python3
+onsight	onsight
+skani	skani
+blastn	blastn
+makeblastdb	makeblastdb
+mock_genomes	
+mock_strains	

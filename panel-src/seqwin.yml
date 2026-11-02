@@ -1,0 +1,11 @@
+# Seqwin (https://github.com/treangenlab/Seqwin), for the seqwin step of run_panel.py (paths.tsv key seqwin_python:
+# this environment's python3). It brings its own Mash and BLAST.
+#   conda env create -f panel-src/seqwin.yml
+name: seqwin
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - seqwin=0.3.1         # the version our panels were built with (stringency 3, see signatures/run_seqwin.py)

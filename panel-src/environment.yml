@@ -1,0 +1,17 @@
+# onsight panel build environment (panel-src). Seqwin runs in its own environment, seqwin.yml.
+#   conda env create -f panel-src/environment.yml
+#   conda activate onsight-panel
+# Versions are the ones our panels were built with.
+name: onsight-panel
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python>=3.10
+  - numpy
+  - skani=0.4.0          # ANI: species rule, near neighbors, own strains
+  - minimap2             # the signature screen
+  - blast=2.16.0         # blastn of signatures against near-neighbor genomes
+  - ncbi-datasets-cli    # genome downloads and CheckM values (seqwin_lists.py, select_genomes.py)

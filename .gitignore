@@ -1,0 +1,21 @@
+# build
+bin/
+src/onsight
+src/onsight-prof
+src/onsight-attr
+src/obj-prof/
+src/obj-attr/
+src/version.h
+src/*.o
+src/*.d
+src/third_party/*.o
+src/third_party/*.d
+build/
+extern/pod5*
+
+# editors and Python
+.vscode/
+.DS_Store
+*/.DS_Store
+__pycache__/
+.ipynb_checkpoints/
