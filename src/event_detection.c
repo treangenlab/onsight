@@ -22,52 +22,54 @@ typedef struct ri_detect_s {
 	int valid_peak;
 } ri_detect_t;
 
+/* The sums run over the whole z-scored read, so they are kept in double: in float the sum of squares grows to about
+ * the read length and the variance of a short window is lost past about 100,000 samples. */
 static inline ONS_NOINLINE void comp_prefix_prefixsq(const float *sig,
 										const uint32_t s_len,
-										float* prefix_sum,
-										float* prefix_sum_square)
+										double* prefix_sum,
+										double* prefix_sum_square)
 {
 	assert(s_len > 0);
 
-	prefix_sum[0] = 0.0f;
-	prefix_sum_square[0] = 0.0f;
+	prefix_sum[0] = 0.0;
+	prefix_sum_square[0] = 0.0;
 	for (uint32_t i = 0; i < s_len; ++i) {
 		prefix_sum[i+1] = prefix_sum[i] + sig[i];
-		prefix_sum_square[i+1] = prefix_sum_square[i] + sig[i]*sig[i];
+		prefix_sum_square[i+1] = prefix_sum_square[i] + (double)sig[i] * sig[i];
 	}
 }
 
 static inline ONS_NOINLINE float* comp_tstat(void *km,
-							 	const float *prefix_sum,
-								const float *prefix_sum_square,
+							 	const double *prefix_sum,
+								const double *prefix_sum_square,
 								const uint32_t s_len,
 								const uint32_t w_len)
 {
-  	const float eta = FLT_MIN;
+  	const double eta = FLT_MIN;
 	float* tstat = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 	if (s_len < 2*w_len || w_len < 2) return tstat;
 	memset(tstat, 0, w_len*sizeof(float));
-	
+
 	for (uint32_t i = w_len; i <= s_len - w_len; ++i) {
-		float sum1 = prefix_sum[i];
-		float sumsq1 = prefix_sum_square[i];
+		double sum1 = prefix_sum[i];
+		double sumsq1 = prefix_sum_square[i];
 		if (i > w_len) {
 			sum1 -= prefix_sum[i - w_len];
 			sumsq1 -= prefix_sum_square[i - w_len];
 		}
-		float sum2 = prefix_sum[i + w_len] - prefix_sum[i];
-		float sumsq2 = prefix_sum_square[i + w_len] - prefix_sum_square[i];
-		float mean1 = sum1 / w_len;
-		float mean2 = sum2 / w_len;
-		float combined_var = (sumsq1/w_len - mean1*mean1 + sumsq2/w_len - mean2*mean2)/w_len;
+		double sum2 = prefix_sum[i + w_len] - prefix_sum[i];
+		double sumsq2 = prefix_sum_square[i + w_len] - prefix_sum_square[i];
+		double mean1 = sum1 / w_len;
+		double mean2 = sum2 / w_len;
+		double combined_var = (sumsq1/w_len - mean1*mean1 + sumsq2/w_len - mean2*mean2)/w_len;
 		// Prevent problem due to very small variances
-		combined_var = fmaxf(combined_var, eta);
+		combined_var = fmax(combined_var, eta);
 		// t-stat
 		//  Formula is a simplified version of Student's t-statistic for the
 		//  special case where there are two samples of equal size with
 		//  differing variance
-		const float delta_mean = mean2 - mean1;
-		tstat[i] = fabs(delta_mean) / sqrt(combined_var);
+		const double delta_mean = mean2 - mean1;
+		tstat[i] = (float)(fabs(delta_mean) / sqrt(combined_var));
 	}
 	// fudge boundaries
 	memset(tstat+s_len-w_len+1, 0, (w_len)*sizeof(float));
@@ -78,8 +80,8 @@ static inline ONS_NOINLINE float* comp_tstat(void *km,
 static inline ONS_NOINLINE uint32_t gen_peaks(ri_detect_t **detectors,
 								 const uint32_t n_detectors,
 								 const float peak_height,
-								 const float *prefix_sum,
-								 const float *prefix_sum_square,
+								 const double *prefix_sum,
+								 const double *prefix_sum_square,
 								 uint32_t* peaks) {
 
 	uint32_t curInd = 0;
@@ -275,8 +277,8 @@ float* detect_events(void *km,
 					 uint32_t* n_events_sum,
 					 uint32_t* n_events)
 {
-	float* prefix_sum = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
-	float* prefix_sum_square = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
+	double* prefix_sum = (double*)ri_kcalloc(km, s_len+1, sizeof(double));
+	double* prefix_sum_square = (double*)ri_kcalloc(km, s_len+1, sizeof(double));
 
 	#ifdef ONS_PROF
 	ons_prof_read_t *pr = ons_prof_cur;

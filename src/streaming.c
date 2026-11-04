@@ -64,7 +64,9 @@ struct ri_read_scores_s {
 	ri_calls_set_t *sets;        /* the read's signature sets for calls.c, one per scored taxon */
 	int             call_e, call_set;
 	double          call_p;
-	int             checked;     /* near-neighbor check: -2 not run, -1 no band, 0 dropped, 1 kept */
+	int             checked;     /* near-neighbor check: -3 skipped (target already called), -2 not run, -1 no band,
+	                              * 0 dropped, 1 kept */
+	double          near_p;      /* the near-neighbor p-value when checked is 0 or 1 */
 	ri_slopes_read_t slope;      /* the sliding-window slope range's refits */
 };
 
@@ -229,6 +231,7 @@ ri_read_scores_t *ri_stream_prepare_read(const ri_stream_state_t *s, const ri_id
 	sc->call_e = sc->call_set = -1;
 	sc->call_p = 1.0;
 	sc->checked = -2;
+	sc->near_p = 1.0;
 	if (rd->n_sig_hits == 0) return sc;
 
 	#ifdef ONS_PROF
@@ -344,15 +347,24 @@ ri_read_scores_t *ri_stream_prepare_read(const ri_stream_state_t *s, const ri_id
 		#ifdef ONS_PROF
 		if (pr) { pt1 = ons_now(); pr->t_slopes += pt1 - pt0; pt0 = pt1; }
 		#endif
-		/* the near-neighbor check of a read call at the top cutoff on its signature's band */
-		if (sc->call_e >= 0 && ri_calls_neighbor_wanted(s->cfg.calls, sc->call_p)) {
+		/* the near-neighbor check of a read call at the top cutoff on its signature's band, skipped once the read's
+		 * target is called (ri_calls_done) */
+		if (sc->call_e >= 0 && ri_calls_neighbor_wanted(s->cfg.calls, sc->call_p) && ri_calls_done(s->cfg.calls, sc->call_e))
+			sc->checked = -3;
+		else if (sc->call_e >= 0 && ri_calls_neighbor_wanted(s->cfg.calls, sc->call_p)) {
 			uint32_t rid = sc->sets[sc->call_set].rid;
 			nc_band_t band;
 			for (m = 0; m < rd->n_sig_hits && rd->sig_hits[m].rid != rid; ++m) {}
 			sc->checked = -1;
 			if (m < rd->n_sig_hits && rd->sig_hits[m].n_hits > 0 &&
-			    ri_band_box(&rd->sig_hits[m], &s->cfg.grid, s->cfg.nonoverlap_gap, &x->band, &band))
-				sc->checked = ri_calls_neighbor_check(s->cfg.calls, x->calls, rid, rd->levels, rd->n_levels, &band);
+			    ri_band_box(&rd->sig_hits[m], &s->cfg.grid, s->cfg.nonoverlap_gap, &x->band, &band)) {
+				double q = ri_calls_neighbor_check(s->cfg.calls, x->calls, rid, rd->levels, rd->n_levels, &band,
+				                                   sc->call_p);
+				if (q >= 0) {    /* kept: the read still counts at the loosest cutoff */
+					sc->near_p = q;
+					sc->checked = ri_calls_neighbor_wanted(s->cfg.calls, q > sc->call_p ? q : sc->call_p);
+				}
+			}
 		}
 		#ifdef ONS_PROF
 		if (pr) { pr->t_neighbor += ons_now() - pt0; pr->checked = sc->checked; }
@@ -371,7 +383,7 @@ void ri_stream_commit_read(ri_stream_state_t *s, const ri_read_t *rd, ri_read_sc
 		emit_read(s, read_id, sc->per_tax, sc->n_per, sc->read_events);
 		if (sc->scored)
 			ri_calls_record(s->cfg.calls, read_id, rd->read_name, sc->call_e >= 0 ? &sc->sets[sc->call_set] : NULL,
-			                sc->call_e, sc->call_p, sc->read_events, sc->n_slopes, sc->checked);
+			                sc->call_e, sc->call_p, sc->read_events, sc->n_slopes, sc->checked, sc->near_p);
 	}
 	++s->total_reads;
 

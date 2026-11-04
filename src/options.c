@@ -78,4 +78,5 @@ void ri_detopt_init(ri_detopt_t *opt)
 	opt->alpha_run                   = 0.01;
 	opt->neighbor_regions            = NULL;
 	opt->neighbor_pore_model         = NULL;
+	opt->neighbor_check_all          = 0;
 }

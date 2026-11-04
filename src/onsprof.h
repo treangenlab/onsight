@@ -78,7 +78,7 @@ typedef struct ons_prof_read_s {
 	/* step 2, per read on all threads: --sig-summary, then the stream scores */
 	uint32_t n_taxa;
 	int      call;           /* read p-value <= the top cutoff */
-	int      checked;        /* near-neighbor check: -2 not wanted, -1 no band, 0 dropped, 1 kept */
+	int      checked;        /* near-neighbor check: -3 skipped, -2 not wanted, -1 no band, 0 dropped, 1 kept */
 	uint64_t t_summary, t_bands, t_pvalue, t_slopes, t_neighbor, t_prepare;
 
 	/* step 2, in read order: the rows, the profile, the stream commit (slope ring, read record, read/target calls) */

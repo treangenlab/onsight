@@ -15,7 +15,7 @@ uint32_t ri_grid_n_slopes(const ri_slope_grid_t *g)
 	     ? (uint32_t)floor(((double)g->max - lo) / step + 1e-6) + 1u : 1u;
 }
 
-/* Slope 1 is computed in integers, so the default grid (slope 1 only) gives the count of (q - r) / 10. */
+/* Slope 1 is computed in integers, so the default grid (slope 1 only) gives the count of floor((q - r) / 10). */
 uint32_t ri_band_fullest(const ri_sig_hits_t *s, const ri_slope_grid_t *g)
 {
 	uint32_t i, j, n, k, n_slopes;
@@ -53,10 +53,7 @@ uint32_t ri_band_fullest(const ri_sig_hits_t *s, const ri_slope_grid_t *g)
 		for (i = 0; i < n; ++i) {
 			uint64_t h;
 			uint32_t idx;
-			if (unit)
-				diag = ((int64_t)s->hits[i].q_pos - (int64_t)s->hits[i].ref_pos) / 10;
-			else    /* the cast truncates toward zero, as the integer division above does */
-				diag = (int64_t)(((double)s->hits[i].q_pos - b * (double)s->hits[i].ref_pos) / 10.0);
+			diag = ri_band_key((int64_t)s->hits[i].q_pos, (int64_t)s->hits[i].ref_pos, b, unit);
 			h = (uint64_t)(diag * 0x9E3779B97F4A7C15ULL);
 			idx = (uint32_t)(h & (cap - 1));
 			while (buckets[idx] != INT64_MIN && buckets[idx] != diag) {
@@ -119,7 +116,7 @@ static inline void band_slope(const uint64_t *a, uint32_t n, double b, uint32_t 
 	int unit = fabs(b - 1.0) < 1e-6;
 	for (i = 0; i < n; ++i) {
 		int64_t  q = (int64_t)(a[i] >> 32), r = (int64_t)(a[i] & 0xffffffffULL);
-		int64_t  key = unit ? (q - r) / 10 : (int64_t)(((double)q - b * (double)r) / 10.0);
+		int64_t  key = ri_band_key(q, r, b, unit);
 		uint32_t idx = (uint32_t)((uint64_t)(key * 0x9E3779B97F4A7C15ULL) & (cap - 1));
 		while (keys[idx] != INT64_MIN && keys[idx] != key) idx = (idx + 1) & (cap - 1);
 		if (keys[idx] == INT64_MIN) {
@@ -146,9 +143,9 @@ static inline uint32_t band_bound(int32_t pairs, uint32_t most)
 	return h;
 }
 
-/* Two hits share a band at slope b only if |dq - b dr| < 20 events (truncation toward zero makes band 0 twice as
- * wide); 21 leaves room for rounding and for slope 1, which is computed in integers. */
-#define BAND_SHARE 21.0
+/* Two hits share a band at slope b only if |dq - b dr| < 10 events, the band width; 11 leaves room for rounding and for
+ * slope 1, which is computed in integers. */
+#define BAND_SHARE 11.0
 /* Signatures with more hits are counted at every slope; their pairs would cost more than the slopes. */
 #define BAND_PAIRS_MAX 64
 
@@ -365,8 +362,7 @@ int ri_band_box(const ri_sig_hits_t *s, const ri_slope_grid_t *g, uint32_t gap, 
 		for (j = 0; j < cap; ++j) keys[j] = INT64_MIN;
 		for (i = 0, nb = 0; i < n; ++i) {     /* bands numbered in the order they are first met */
 			uint32_t aq = (uint32_t)(a[i] >> 32), ar = (uint32_t)(a[i] >> 1) & 0x7fffffffu, rev = (uint32_t)(a[i] & 1);
-			int64_t q = (int64_t)aq, r = (int64_t)ar;
-			int64_t key = unit ? (q - r) / 10 : (int64_t)(((double)q - b * (double)r) / 10.0);
+			int64_t key = ri_band_key((int64_t)aq, (int64_t)ar, b, unit);
 			uint32_t h = (uint32_t)((uint64_t)(key * 0x9E3779B97F4A7C15ULL) & (cap - 1));
 			while (keys[h] != INT64_MIN && keys[h] != key) h = (h + 1) & (cap - 1);
 			if (keys[h] == INT64_MIN) {

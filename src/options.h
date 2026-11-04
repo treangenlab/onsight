@@ -90,6 +90,7 @@ typedef struct ri_detopt_s{
 	double       alpha_run;             /* --alpha-run: chance of any false target call per run, default 0.01 */
 	const char  *neighbor_regions;      /* --neighbor-check: region file (neighbor_regions.py) of the near-neighbor check */
 	const char  *neighbor_pore_model;   /* the run's pore model (-p), which the near-neighbor check uses too */
+	int          neighbor_check_all;    /* --neighbor-check-all: also check read calls whose target is already called */
 } ri_detopt_t;
 
 /* Fill in the defaults. */

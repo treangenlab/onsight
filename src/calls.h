@@ -62,15 +62,23 @@ int ri_read_pvalue(const ri_calls_t *c, ri_calls_scratch_t *x, const ri_calls_se
  * alpha_read. */
 int ri_calls_neighbor_wanted(const ri_calls_t *c, double p);
 
-/* Near-neighbor check of one call on its signature's band: 1 kept, 0 dropped, -1 no check possible (counted as dropped). */
-int ri_calls_neighbor_check(const ri_calls_t *c, ri_calls_scratch_t *x, uint32_t rid, const float *levels,
-                            uint32_t n_levels, const nc_band_t *band);
+/* Entry e is already called under the near-neighbor check, so checking more of its read calls cannot change any target
+ * call (a call is final, and a read's check only decides whether that read counts for its own entry); 0 with
+ * --neighbor-check-all. Calls change only in read order after a minibatch's reads are scored, so all threads see
+ * the calls of the earlier minibatches. */
+int ri_calls_done(const ri_calls_t *c, int e);
+
+/* Near-neighbor check of one call on its signature's band: the near-neighbor p-value (neighbor_check.h), -1 when no
+ * check is possible (counted as dropped). p: the call's read p-value. */
+double ri_calls_neighbor_check(const ri_calls_t *c, ri_calls_scratch_t *x, uint32_t rid, const float *levels,
+                               uint32_t n_levels, const nc_band_t *band, double p);
 
 /* One scored read, in read order, after ri_read_pvalue: its row in the read table (set: the set the call came from) and
- * the target-call tests, on the read calls and (with the near-neighbor check) on the calls it keeps. checked:
- * ri_calls_neighbor_check's result, or -2 when not checked. */
+ * the target-call tests, on the read calls and (with the near-neighbor check) on max(p, p_near). checked: 1 kept (max(p,
+ * p_near) at most the loosest cutoff), 0 dropped, -1 no check possible, -2 not checked, -3 skipped because the entry
+ * was already called; p_near: the near-neighbor p-value when checked is 0 or 1. */
 void ri_calls_record(ri_calls_t *c, uint64_t read_id, const char *read_name, const ri_calls_set_t *set, int entry,
-                     double p, uint32_t read_events, uint32_t n_slopes, int checked);
+                     double p, uint32_t read_events, uint32_t n_slopes, int checked, double p_near);
 
 /* End of the run: n_reads every read of the input; writes the target call table. */
 void ri_calls_finish(ri_calls_t *c, uint64_t n_reads);

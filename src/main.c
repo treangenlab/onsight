@@ -68,6 +68,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"alpha-run",               ko_required_argument, 464 },
 	{ (char*)"neighbor-check",          ko_required_argument, 465 },
 	{ (char*)"t-min",                   ko_required_argument, 466 },
+	{ (char*)"neighbor-check-all",      ko_no_argument,       467 },
 	/* chemistry, panel folder and output folder */
 	{ (char*)"pore",                    ko_required_argument, 480 },
 	{ (char*)"panel-dir",               ko_required_argument, 481 },
@@ -296,6 +297,7 @@ int main(int argc, char *argv[])
 			}
 		}
 		else if (c == 465) { opt.neighbor_regions = o.arg; }                           // --neighbor-check
+		else if (c == 467) { opt.neighbor_check_all = 1; }                             // --neighbor-check-all
 		else if (c == 466) {                                                           // --t-min
 			opt.t_min = atof(o.arg);
 			if (!(opt.t_min > 0.0 && opt.t_min < 1e-3)) {
@@ -491,6 +493,8 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    --neighbor-check FILE     near-neighbor check of the read calls at p <= 1e-3 (or the\n");
 		fprintf(fp_help, "                              loosest --alpha-read) against the regions in FILE, with the -p\n");
 		fprintf(fp_help, "                              pore model; the target call then also runs on the calls it keeps\n");
+		fprintf(fp_help, "    --neighbor-check-all      also check read calls whose target is already called (slower,\n");
+		fprintf(fp_help, "                              same target calls; for read-level analysis)\n");
 		fprintf(fp_help, "\n");
 		fprintf(fp_help, "  Debug and analysis outputs:\n");
 		fprintf(fp_help, "    --sig-summary FILE        the --debug table, written to FILE\n");

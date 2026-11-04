@@ -104,11 +104,11 @@ split them, for example into 4,000 reads per file.
 | Column | Meaning |
 |---|---|
 | `entry` | the target |
-| `rule` | `read_pvalue`: read calls as they are; `read_pvalue+neighbor_check`: only read calls that pass the near-neighbor check (the result to use) |
+| `rule` | `read_pvalue`: read calls as they are; `read_pvalue+neighbor_check`: each read call counts with the larger of its read p-value and its near-neighbor p-value (the result to use) |
 | `called` | 1: the target is in the sample; 0: not called |
 | `first_call_reads` | reads processed when the target was called |
 | `first_call_time_s` | seconds of processing when the target was called |
-| `calls` | reads called for this target (read p-value ≤ 0.001) |
+| `calls` | reads called for this target (read p-value ≤ 0.001); with `read_pvalue+neighbor_check`, those the check kept, so it stops growing soon after the target call, at the end of that batch of reads (see `skipped` below) |
 | `reads` | reads processed in the whole run |
 | `log_lr`, `threshold` | the test statistic and the value it must reach to call the target; set so that the chance of any false target call in a run is at most 1% |
 | `test`, `alpha_read`, `t_min` | the test's settings (averaged over read p-value cutoffs from `t_min` to 0.001) |
@@ -126,7 +126,8 @@ split them, for example into 4,000 reads per file.
 | `n_sigs` | signatures of this target in the panel |
 | `slopes` | slopes searched (read speed against the signature) |
 | `rid`, `signature` | the signature matched |
-| `neighbor_check` | `kept` or `dropped` by the near-neighbor check; `no band` when the match gave no region to check; `-` when not checked (p > 0.001, or the panel has no `regions.lcr`) |
+| `neighbor_check` | `kept` when the larger of `p` and `neighbor_p` is at most 0.001, else `dropped`; `no band` when the match gave no region to check; `skipped` when the target was already called, since the check can no longer change a target call (`--neighbor-check-all` checks these too, more slowly); `-` when not checked (p > 0.001, or the panel has no `regions.lcr`) |
+| `neighbor_p` | near-neighbor p-value: the chance that a read of a near neighbor fits the target this much better than every near neighbor; 0 when no near neighbor has the region. Worked out only where it can change the call, from the larger of `p` and 1e-8 up to 0.001: at the lower end it means "at most", above 0.001 "at least"; `-` when not checked or skipped |
 
 **`results/sig_summary.tsv`** (only with `--debug`): one row per read: its best signature, its top five signatures and
 their scores. Use it to look into what a read matched. `--debug` sorts every read's signatures, so the run is slower;
@@ -191,6 +192,7 @@ The version is the number in `VERSION` (`onsight --version`).
 
 **Changes**
 
+* 0.1.0: first public release. Near-neighbor p-value (a read call counts with the larger of its read p-value and its near-neighbor p-value); read calls of targets already called are not checked (`--neighbor-check-all` checks them); bands numbered by floor, so band 0 is as wide as the others; event detection sums in double; comments, help text and build clean-up; `FP_CONTRACT`.
 * 0.0.3, the paper's version: the averaged target call starts at t_min 1e-8; the slope grid spans the middle 95% of
   the last 199 confident chains (`--slope-grid`); `--debug`; 2.5–8 times less CPU with the same results; POD5 files
   are read without memory mapping.

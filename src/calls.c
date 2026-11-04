@@ -35,9 +35,10 @@ struct ri_calls_s {
 	double    alpha_run;
 	double    threshold;          /* ln(K / alpha_run) */
 	nc_db_t  *nc;                 /* near-neighbor check regions (--neighbor-check); NULL = off */
-	uint32_t  nc_n;               /* near-neighbor checks run and their time, summed over the threads' scratch */
+	int       check_all;          /* --neighbor-check-all: also check the read calls of entries already called */
+	uint32_t  nc_n, nc_skip;      /* near-neighbor checks run and their time, summed over the threads' scratch; skipped */
 	double    nc_s;
-	int       n_rule;             /* 1: read calls; 2: also the calls the near-neighbor check keeps */
+	int       n_rule;             /* 1: read calls; 2: also the calls with the near-neighbor p-value */
 	uint32_t *calls;              /* [rule][alpha][entry]: read calls so far */
 	uint32_t *first;              /* reads so far at the target call; 0: not called */
 	float    *first_s;            /* seconds since detection began at the target call */
@@ -45,7 +46,7 @@ struct ri_calls_s {
 	double    t0;
 };
 
-/* One thread's scratch for the read p-value (each entry's set) and the near-neighbor check (nc_keep's buffer). */
+/* One thread's scratch for the read p-value (each entry's set) and the near-neighbor check (nc_pvalue's buffer). */
 struct ri_calls_scratch_s {
 	int32_t  *pick;
 	uint32_t *pick_count;
@@ -289,6 +290,7 @@ ri_calls_t *ri_calls_init(const ri_idx_t *ri, const ri_detopt_t *opt)
 		c->nc = nc_load(opt->neighbor_regions, opt->neighbor_pore_model, 0);
 		if (!c->nc) { ri_calls_destroy(c); return NULL; }
 		c->n_rule = 2;
+		c->check_all = opt->neighbor_check_all;
 	}
 	m = (size_t)c->n_rule * (size_t)c->n_alpha * (size_t)c->n_entry;
 	c->calls    = (uint32_t*)calloc(m, sizeof(uint32_t));
@@ -304,7 +306,7 @@ ri_calls_t *ri_calls_init(const ri_idx_t *ri, const ri_detopt_t *opt)
 		c->read_fp = fopen(opt->read_calls_path, "w");
 		if (c->read_fp)
 			fputs("read\tposition\tentry\tp\tnonoverlap_hits\thits\tread_events\tsig_len\tn_sigs\tslopes\trid\tsignature\t"
-			      "neighbor_check\n", c->read_fp);
+			      "neighbor_check\tneighbor_p\n", c->read_fp);
 	}
 	if (opt->target_calls_path) c->target_fp = fopen(opt->target_calls_path, "w");
 	if ((opt->read_calls_path && !c->read_fp) || (opt->target_calls_path && !c->target_fp)) {
@@ -426,39 +428,54 @@ int ri_calls_neighbor_wanted(const ri_calls_t *c, double p)
 	return c && c->nc && p <= c->alpha_max;
 }
 
-int ri_calls_neighbor_check(const ri_calls_t *c, ri_calls_scratch_t *x, uint32_t rid, const float *levels,
-                            uint32_t n_levels, const nc_band_t *band)
+int ri_calls_done(const ri_calls_t *c, int e)
 {
-	double t = ri_realtime();
-	int k = nc_keep(c->nc, rid, levels, n_levels, band, x->nc_buf, NULL);
+	int a;
+	if (!c || !c->nc || c->check_all || e < 0) return 0;
+	for (a = 0; a < c->n_alpha; ++a)     /* the rule with the check, called at every cutoff */
+		if (!c->first[((size_t)c->n_alpha + (size_t)a) * (size_t)c->n_entry + (size_t)e]) return 0;
+	return 1;
+}
+
+double ri_calls_neighbor_check(const ri_calls_t *c, ri_calls_scratch_t *x, uint32_t rid, const float *levels,
+                               uint32_t n_levels, const nc_band_t *band, double p)
+{
+	/* worked out only where it can change the call: from max(p, t_min) to the loosest cutoff */
+	double t = ri_realtime(), lo = p > c->t_min ? p : c->t_min, q;
+	if (lo > c->alpha_max) lo = c->alpha_max;
+	q = nc_pvalue(c->nc, rid, levels, n_levels, band, x->nc_buf, lo, c->alpha_max, NULL);
 	x->nc_s += ri_realtime() - t;
 	++x->nc_n;
-	return k;
+	return q;
 }
 
 void ri_calls_record(ri_calls_t *c, uint64_t read_id, const char *read_name, const ri_calls_set_t *set, int e,
-                     double p, uint32_t read_events, uint32_t n_slopes, int checked)
+                     double p, uint32_t read_events, uint32_t n_slopes, int checked, double p_near)
 {
 	int a;
+	double q = checked >= 0 && p_near > p ? p_near : p;    /* the read p-value with the near-neighbor check */
 	if (!c || e < 0) return;
 	if (c->read_fp) {
 		const ri_idx_t *ri = c->ri;
 		const char *sig = set->rid < ri->n_seq ? ri->seq[set->rid].name : NULL;
-		fprintf(c->read_fp, "%s\t%llu\t%s\t%.17g\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%s\t%s\n", read_name ? read_name : "*",
+		fprintf(c->read_fp, "%s\t%llu\t%s\t%.17g\t%u\t%u\t%u\t%u\t%u\t%u\t%u\t%s\t%s\t", read_name ? read_name : "*",
 		        (unsigned long long)read_id, c->entry[e], p, set->nonoverlap, set->units > set->nonoverlap ? set->units : set->nonoverlap,
 		        read_events, set->len, c->n_sigs[e], n_slopes, set->rid, sig ? sig : "*",
-		        checked == 1 ? "kept" : checked == 0 ? "dropped" : checked == -1 ? "no band" : "-");
+		        checked == 1 ? "kept" : checked == 0 ? "dropped" : checked == -1 ? "no band" : checked == -3 ? "skipped" : "-");
+		if (checked >= 0) fprintf(c->read_fp, "%.17g\n", p_near);
+		else fputs("-\n", c->read_fp);
 	}
+	if (checked == -3) ++c->nc_skip;
 	if (c->averaged) {
 		if (p > CALLS_T_MAX) return;
 		calls_add_avg(c, 0, e, p, (uint32_t)read_id + 1);
-		if (c->n_rule > 1 && checked == 1) calls_add_avg(c, 1, e, p, (uint32_t)read_id + 1);
+		if (c->n_rule > 1 && checked == 1) calls_add_avg(c, 1, e, q, (uint32_t)read_id + 1);
 		return;
 	}
 	for (a = 0; a < c->n_alpha; ++a) {
 		if (p > c->alpha[a]) continue;
 		calls_add(c, 0, a, e, (uint32_t)read_id + 1);
-		if (c->n_rule > 1 && checked == 1) calls_add(c, 1, a, e, (uint32_t)read_id + 1);
+		if (c->n_rule > 1 && checked == 1 && q <= c->alpha[a]) calls_add(c, 1, a, e, (uint32_t)read_id + 1);
 	}
 }
 
@@ -466,7 +483,8 @@ void ri_calls_finish(ri_calls_t *c, uint64_t n_reads)
 {
 	int r, a, e;
 	if (!c) return;
-	if (c->nc) fprintf(stderr, "[M::%s] near-neighbor check: %u calls in %.2f s, summed over threads\n", __func__, c->nc_n, c->nc_s);
+	if (c->nc) fprintf(stderr, "[M::%s] near-neighbor check: %u calls in %.2f s, summed over threads; %u skipped, their "
+	                   "target already called\n", __func__, c->nc_n, c->nc_s, c->nc_skip);
 	if (c->target_fp) {
 		fputs("entry\trule\ttest\talpha_read\tt_min\tcalled\tfirst_call_reads\tfirst_call_time_s\tcalls\treads\tlog_lr\t"
 		      "threshold\n", c->target_fp);

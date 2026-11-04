@@ -322,16 +322,42 @@ static uint32_t region_cut(const nc_db_t *db, const nc_reg_t *g, int64_t b0, int
 	return t1 - *t0 > db->k + 10 ? (uint32_t)(t1 - *t0) : 0;
 }
 
-int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_levels, const nc_band_t *band,
-	    void *buf, nc_costs_t *out)
+/* Noise variance range of the near-neighbor p-value, in squared z-score units (neighbor_check.h). Wide enough that the
+ * average over it is not cut for costs from 1e-3 to 1. */
+#define NC_VAR_LO 1e-4
+#define NC_VAR_HI 10.0
+
+/* ln L of neighbor_check.h for own cost a, near cost b, n read events and m own-side regions */
+static double log_lr(double a, double b, uint32_t n, uint32_t m)
+{
+	double h = 0.5 * n;
+	return h * (1.0 + log(2.0 * b / (n * a))) + lgamma(h) - log((double)m) - log(log(NC_VAR_HI / NC_VAR_LO));
+}
+
+static double p_of(double a, double b, uint32_t n, uint32_t m)
+{
+	double l;
+	if (b == HUGE_VAL || a <= 0.0) return 0.0;
+	l = log_lr(a, b, n, m);
+	return l <= 0.0 ? 1.0 : exp(-l);
+}
+
+/* the near cost at which the p-value is q: ln L is (n/2) ln b plus ln L at b = 1 */
+static double cost_at(double a, uint32_t n, uint32_t m, double q)
+{
+	return exp((-log(q) - log_lr(a, 1.0, n, m)) * 2.0 / n);
+}
+
+double nc_pvalue(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_levels, const nc_band_t *band,
+		 void *buf, double lo, double hi, nc_costs_t *out)
 {
 	const nc_sig_t *s;
 	const nc_reg_t *g;
 	int64_t b0, b1, t0, t1;
-	uint32_t a, n, m, len, r;
-	double *prev = (double*)buf, *cur = prev + db->max_cut + 1, own, near = HUGE_VAL, cost, stop;
+	uint32_t a, n, m, len, r, n_own = 1;
+	double *prev = (double*)buf, *cur = prev + db->max_cut + 1, own, near = HUGE_VAL, cost, stop, c_lo = 0, c_hi = 0;
 	float *y = (float*)(cur + db->max_cut + 1);
-	int own_side;
+	int own_side, any_near = 0;
 
 	if (rid >= db->n_sigs || sig_at(db, rid)->len == 0) return -1;
 	s = sig_at(db, rid);
@@ -341,8 +367,12 @@ int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_lev
 	m = cut_levels(db, base_of(db, s, s->base) + (uint64_t)t0, (uint32_t)(t1 - t0), band->strand != 0, y);
 	own = subseq_dtw(levels + a, n, y, m, HUGE_VAL, prev, cur);
 
-	/* own strains first: their best cost is the cost the near neighbors must stay above */
+	/* own strains first: their best cost sets the near costs that matter, c_lo (p_near at most lo) and c_hi (above hi) */
 	for (own_side = 1; own_side >= 0; --own_side) {
+		if (!own_side && own > 0.0) {
+			c_lo = cost_at(own, n, n_own, lo);
+			c_hi = cost_at(own, n, n_own, hi);
+		}
 		for (r = 0; r < s->n_reg; ++r) {
 			g = reg_at(db, (uint64_t)s->rd + r);
 			if (((g->flags & NC_OWN) != 0) != own_side) continue;
@@ -352,19 +382,25 @@ int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_lev
 				       ((g->flags & NC_MINUS) != 0) != (band->strand != 0), y);
 			/* a region is followed only while it can still change the result */
 			if (own_side) stop = own;
-			else stop = out ? near : nextafter(own, HUGE_VAL);
+			else stop = out || own <= 0.0 ? near : (near < c_lo ? near : c_lo);
 			cost = subseq_dtw(levels + a, n, y, m, stop, prev, cur);
 			if (own_side) {
+				++n_own;
 				if (cost < own) own = cost;
-			} else if (cost < near) {
-				near = cost;
-				if (!out && near <= own) break;
+			} else {
+				any_near = 1;
+				if (cost < near) near = cost;
+				if (!out && near < c_hi) break;
 			}
 		}
 	}
 	if (out) {
 		out->own = own;
 		out->near = near;
+		out->n = n;
+		out->n_own = n_own;
 	}
-	return own < near;	/* HUGE_VAL near: no near neighbor overlaps the band, kept */
+	if (!any_near) return 0.0;		/* no near-neighbor region overlaps the band */
+	if (near == HUGE_VAL) return lo;	/* every region stopped at c_lo: p_near at most lo */
+	return p_of(own, near, n, n_own);
 }

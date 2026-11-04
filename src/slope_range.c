@@ -116,7 +116,7 @@ static int chain_fit(ri_slopes_buf_t *x, const ri_sig_hits_t *s, const ri_slope_
 		for (j = 0; j < h; ++j) x->keys[j] = INT64_MIN;
 		for (i = 0; i < n; ++i) {   /* per band: non-overlapping hits so far and the last counted position */
 			int64_t  q = (int64_t)(x->a[i] >> 32), rp = (int64_t)(x->a[i] & 0xffffffffULL);
-			int64_t  key = unit ? (q - rp) / 10 : (int64_t)(((double)q - b * (double)rp) / 10.0);
+			int64_t  key = ri_band_key(q, rp, b, unit);
 			uint32_t idx = (uint32_t)((uint64_t)(key * 0x9E3779B97F4A7C15ULL) & (h - 1));
 			while (x->keys[idx] != INT64_MIN && x->keys[idx] != key) idx = (idx + 1) & (h - 1);
 			if (x->keys[idx] == INT64_MIN) { x->keys[idx] = key; x->dec[idx] = 1; x->lastq[idx] = (uint32_t)q; }
@@ -134,7 +134,7 @@ static int chain_fit(ri_slopes_buf_t *x, const ri_sig_hits_t *s, const ri_slope_
 	unit = fabs(b - 1.0) < 1e-6;
 	for (i = 0, m = 0; i < n; ++i) {
 		int64_t q = s->hits[i].q_pos, rp = s->hits[i].ref_pos;
-		int64_t key = unit ? (q - rp) / 10 : (int64_t)(((double)q - b * (double)rp) / 10.0);
+		int64_t key = ri_band_key(q, rp, b, unit);
 		if (key >= best_key - 1 && key <= best_key + 1) { x->qq[m] = (double)q; x->rr[m] = (double)rp; ++m; }
 	}
 	if (m < 3) return 0;

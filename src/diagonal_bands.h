@@ -13,6 +13,7 @@
 #ifndef DIAGONAL_BANDS_H
 #define DIAGONAL_BANDS_H
 
+#include <math.h>
 #include <stdint.h>
 #include "seed_hits.h"
 #include "neighbor_check.h"
@@ -25,6 +26,15 @@ extern "C" {
 typedef struct {
 	float min, max, step;
 } ri_slope_grid_t;
+
+/* The band of a hit at slope b: floor((q - b r) / 10), so band 0 is 10 events wide like the others (rounding toward
+ * zero would put -9 to 9 in it). Slope 1 (unit) is computed in integers. */
+static inline int64_t ri_band_key(int64_t q, int64_t r, double b, int unit)
+{
+	int64_t d = q - r;
+	if (unit) return d >= 0 ? d / 10 : -((9 - d) / 10);
+	return (int64_t)floor(((double)q - b * (double)r) / 10.0);
+}
 
 /* One thread's buffers, grown when a signature has more hits than any before */
 typedef struct {
