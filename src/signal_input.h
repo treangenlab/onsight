@@ -70,44 +70,17 @@ typedef struct ri_signal_file_s {
 	#endif
 } ri_signal_file_t;
 
-/**
- * Closes the signal file.
- *
- * @param fp	a struct that includes the file pointer to a signal file
- * 				Allocated memories in the struct are destroyed here.
- */
+/* Closes the signal file and frees its buffers. */
 void ri_signal_file_close(ri_signal_file_t *fp);
 
-/**
- * Opens the signal file (e.g., a FAST5 file)
- *
- * @param fn	path to the signal file
- * 
- * @return		a struct that includes the file pointer to the opened signal file
- * 				Returned struct (and its variables) is allocated in this function.
- */
+/* Opens a FAST5, POD5, SLOW5 or BLOW5 file; NULL if it cannot be opened. */
 ri_signal_file_t *ri_signal_file_open(const char *fn, int io_n_threads);
 
-/**
- * Reads the entire signal values of the next read from a file
- *
- * @param fp				file pointer to the signal file (i.e., either FAST5 or SLOW5)
- * @param s					attribute of the read and the signal values.
- * 							$s->name = name of the read
- * 							$s->sig = signal values
- * 							$s->l_sig = number of signal values
- * Samples outside 30-200 pA are dropped.
- */
+/* The next read's name and signal (s->name, s->sig, s->l_sig); samples outside 30-200 pA are dropped. */
 void ri_read_signal(ri_signal_file_t* fp, ri_signal_t* s);
 
-/**
- * Recursively find all files that ends with "fast5" under input directory const char *A
- *
- * @param A			path to a directory where the fast5 files are searched
- * @param fnames	list of fast5 or pod5 files
- * 					fnames->a = List of file names
- * 					fnames->n = Number of fast5 files
- */
+/* A itself if it is a signal file, else every .fast5, .pod5, .slow5 and .blow5 file under folder A, recursively,
+ * appended to fnames. */
 void ri_find_signal_files(const char *A, ri_char_v *fnames);
 
 #ifdef __cplusplus

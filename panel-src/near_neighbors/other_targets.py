@@ -3,8 +3,7 @@
 
 near_neighbors.py candidates drops a candidate genome that is another panel target ("other panel species <target>"),
 so on its own the check never compares a target's read calls with another target's genomes, and a read of one target
-that hits a signature of another is kept (24-target panel, 10-28: E. coli reads kept as Enterobacter and
-S. enterica). Here, when target s dropped a candidate as target t, t's own strains (own_strains.py) go on s's
+that hits a signature of another is kept (for example, E. coli reads kept as Enterobacter or S. enterica). Here, when target s dropped a candidate as target t, t's own strains (own_strains.py) go on s's
 near-neighbor side: each is searched against s's signature sets. Their species_taxid stays t's taxid, so
 neighbor_regions.py puts their regions on the near side of s's signatures. A target of the keep-off panel that is not
 a target here has no own strains; it is reported and left out.
@@ -13,7 +12,7 @@ Writes <out>/genomes.tsv (genome, file; no header, as the other homolog folders)
 species_taxid, near_neighbor_of = the sets of every such s, ncbi_species_taxid, organism) for blast_homologs.py; one
 line per target pair goes to the log.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 other_targets.py --near <near folder> --own <own folder> --out <dir>
 """
 import argparse

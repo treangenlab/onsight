@@ -89,23 +89,11 @@ typedef struct ri_detopt_s{
 	double       t_min;                 /* --t-min: the smallest cutoff of the averaged target call */
 	double       alpha_run;             /* --alpha-run: chance of any false target call per run, default 0.01 */
 	const char  *neighbor_regions;      /* --neighbor-check: region file (neighbor_regions.py) of the near-neighbor check */
-	const char  *neighbor_pore_model;      /* the run's pore model (-p), which the near-neighbor check uses too */
+	const char  *neighbor_pore_model;   /* the run's pore model (-p), which the near-neighbor check uses too */
 } ri_detopt_t;
 
-/**
- * Initializes the default indexing options
- *
- * @param opt	pointer to the indexing options
- * 
- */
+/* Fill in the defaults. */
 void ri_idxopt_init(ri_idxopt_t *opt);
-
-/**
- * Initializes the default detection options
- *
- * @param opt	pointer to the detection options
- * 
- */
 void ri_detopt_init(ri_detopt_t *opt);
 
 #ifdef __cplusplus

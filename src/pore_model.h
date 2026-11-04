@@ -22,17 +22,8 @@ typedef struct ri_pore_s{ri_porei_t* pore_inds; float* pore_vals; unsigned int n
 /* Loads the level of every k-mer from column lev_col of fpore; pore->pore_vals is NULL on error. */
 void ri_pore_load(const char* fpore, const short k, const short lev_col, ri_pore_t* pore);
 
-/**
- * Converts the sequence into its expected event values
- *
- * @param str		sequence to convert to its expected event values
- * @param len		length of the $str
- * @param pore		a pore model including expected event values for each possible k-mer
- * @param pore_kmer	k-mer size of each event
- * @param strand	directin of strand. 1 is forward, 0 is reverse direction.
- * @param s_len		length of $s_values
- * @param s_values	expected event values of each k-mer in $str
- */
+/* The reference signal of str (len bases): the expected level of each k-mer (pore_kmer bases) on the forward
+ * (strand 1) or reverse (0) strand, *s_len values written to s_values. */
 void ri_reference_signal(const char *str,
 				   int len,
 				   const ri_pore_t* pore,

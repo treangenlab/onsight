@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Build one index of a panel from its signatures (signatures.fasta, signatures.csv) with strobe-event seeds (two
-# strobes of 6 quantized events, the second 8-20 events after the first), as every current index. Writes <index> and
-# <index>.sigmeta.tsv (the engine); the build log goes to stdout. R9.4.1: 6-mer pore model; R10.4.1: 9-mer model and
-# the R10 event segmentation (--pore).
-#   conda activate s2s
+# strobes of 6 quantized events, the second 8-20 events after the first). Writes <index> and <index>.sigmeta.tsv;
+# the build log goes to stdout. R9.4.1: 6-mer pore model; R10.4.1: 9-mer model and the R10 event detection (--pore).
+#   conda activate onsight
 #   build_index.sh <signatures folder> <r9|r10> <index file> [onsight binary] [threads]
 set -euo pipefail
 [ $# -ge 3 ] || { sed -n 2,7p "$0"; exit 1; }

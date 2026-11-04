@@ -24,7 +24,7 @@ struct ri_slopes_s {
 	float        cover;          /* --slope-grid */
 	uint32_t     gap;
 	const ri_calls_t *calls;     /* the read p-value of a chain */
-	FILE        *emit_fp;        /* the slopes lines of fd 3; NULL: none */
+	FILE        *emit_fp;        /* the slopes lines (--stream-emit-fd); NULL: none */
 	int          read_entry;     /* this read's call by read p-value (-1: none) and its p */
 	double       read_p;
 	int          read_chain;     /* 1 when the read's chain went into the ring: its entry and the chain */
@@ -291,7 +291,7 @@ static int cmp_double(const void *a, const void *b)
 	return (x > y) - (x < y);
 }
 
-/* The middle value, or the mean of the two middle values (Python's statistics.median). */
+/* The middle value, or the mean of the two middle values. */
 static double median_of(double *x, uint32_t n)
 {
 	qsort(x, n, sizeof(double), cmp_double);

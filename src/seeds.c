@@ -78,7 +78,6 @@ void seeds_minimizer(void *km,
 
 	int sigBufFull = 0;
 	uint32_t f_pos, l, sigBufPos = 0;
-	uint32_t l_sigpos = 0; //last signal position
 	uint32_t f_tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
@@ -99,7 +98,6 @@ void seeds_minimizer(void *km,
 
 		l++;
 		mm128_t info = { UINT64_MAX, UINT64_MAX };
-		l_sigpos = f_pos;
 		prev_quant_for_diff = f_tmpQuantSignal;
 
 		quantVal = (quantVal<<quant_bit|f_tmpQuantSignal)&mask_events;
@@ -165,7 +163,7 @@ void seeds_every(void *km,
 	uint32_t n_buckets = 1UL<<quant_bit;
 
 	int sigBufFull = 0;
-	uint32_t f_pos = 0, sigBufPos = 0, l_sigpos = 0; //last signal position
+	uint32_t f_pos = 0, sigBufPos = 0;
 	uint32_t f_tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
@@ -175,7 +173,6 @@ void seeds_every(void *km,
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
 	//First quantization is done here
-	l_sigpos = f_pos;
 	f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
 	uint32_t prev_quant_for_diff = f_tmpQuantSignal;
 	sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;
@@ -194,7 +191,6 @@ void seeds_every(void *km,
 			if(qdiff <= diff) continue;
 		}
 
-		l_sigpos = f_pos;
 		prev_quant_for_diff = f_tmpQuantSignal;
 
 		sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;

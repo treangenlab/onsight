@@ -94,7 +94,7 @@ first-call times that follow the run, give the files in sequencing order, for ex
 `onsight ... $(cat files_in_order.txt)`. Very large single files (hundreds of thousands of reads) slow the run down;
 split them, for example into 4,000 reads per file.
 
-`onsight -h` lists every option. The defaults are the settings used for our results; leave them unless you know why.
+`onsight -h` lists every option. The defaults are the settings used in the paper; leave them unless you know why.
 
 ### 3. Read the results
 
@@ -134,13 +134,11 @@ their scores. Use it to look into what a read matched. `--debug` sorts every rea
 
 ### Memory and speed
 
-Peak memory is about 1.5 GB with a 6-target panel and 3.3–3.7 GB with the 24-target panel (4 threads, near-neighbor
-check on; the same with the 24-target panel's LCR2 region file). Most of it is the index and `regions.lcr`, loaded whole. `-K` (minibatch size, default 4M signal samples)
-also sets memory, but it changes the results, because the slope search is updated between minibatches; keep the
-default.
-
-For scale: on an Intel Xeon Gold 6138 with 4 threads and the 6-target panel, 5,000 simulated R9.4.1 reads took about
-6 minutes and 5,000 simulated R10.4.1 reads about 15 minutes.
+With the 24-target panel and 4 threads, peak memory was 2.5–3.1 GB on an Intel Xeon Gold 6230 server and 2.3–3.3 GB on
+an NVIDIA Jetson Orin Nano; most of it is the index and `regions.lcr`, loaded whole. On the server, keeping pace with
+the sequencing of three Zymo mock runs (R9.4.1) took 0.31–0.72 CPU cores. `-K` (minibatch size, default 4M signal
+samples) also sets memory, but it changes the results, because the slope grid is updated between minibatches; keep
+the default.
 
 ### Building a panel
 
@@ -173,6 +171,11 @@ All signal formats are enabled by default.
 | `ENABLE_HDF5` | `ON` | `.fast5` |
 | `ENABLE_SLOW5` | `ON` | `.slow5`, `.blow5` |
 
+`FP_CONTRACT=off` on ARM (for example NVIDIA Jetson) turns off fused multiply-add, as x86 builds always do. The
+default keeps the compiler's setting, as in the paper's Jetson runs. Fused multiply-add changes the last digits of
+p-values, and through the slope grid some read calls: an x86 build with it (`FP_CONTRACT=fast`) gives the Jetson's
+read calls. With `off`, ARM should give x86's results; this has not been run on ARM yet.
+
 ```bash
 make ENABLE_HDF5=OFF                          # drop .fast5
 make ENABLE_POD5=OFF ENABLE_HDF5=OFF          # pure C99, SLOW5/BLOW5 only
@@ -181,13 +184,18 @@ make ENABLE_POD5=OFF ENABLE_HDF5=OFF          # pure C99, SLOW5/BLOW5 only
 Disabling all three is a build error. When `CONDA_PREFIX` is set, the build uses conda's HDF5
 and zstd rather than building `extern/hdf5` and `extern/zstd`.
 
-Debug and sanitizer builds: `make DEBUG=1`, `make PROFILE=1`, `make asan=1`, `make tsan=1`.
+Debug and sanitizer builds: `make DEBUG=1`, `make asan=1`, `make tsan=1`. Per-stage timers and work counts: `make prof`
+(`bin/onsight-prof`, same results; see `src/onsprof.h` and `scripts/hw_prof/`).
 
 The version is the number in `VERSION` (`onsight --version`).
 
-**0.0.2:** reads region files past 4.29 billion stored bases (format LCR2, 64-bit positions) as well as the earlier
-LCR1; outputs with an LCR1 file are unchanged. Adds `panel-src/`, the panel build. The 24-target panel's new
-`regions.lcr` (other targets as near neighbors) is LCR2 and needs 0.0.2.
+**Changes**
+
+* 0.0.3, the paper's version: the averaged target call starts at t_min 1e-8; the slope grid spans the middle 95% of
+  the last 199 confident chains (`--slope-grid`); `--debug`; 2.5–8 times less CPU with the same results; POD5 files
+  are read without memory mapping.
+* 0.0.2: region files past 4.29 billion stored bases (LCR2, 64-bit positions) as well as LCR1; `panel-src/`, the panel
+  build. The 24-target panel's `regions.lcr` is LCR2.
 
 > **Platform note:** POD5 ships prebuilt libraries only for linux-x64, linux-arm64, and
 > osx-arm64. On Windows, Intel macOS, or musl, build with `ENABLE_POD5=OFF`.
@@ -198,5 +206,5 @@ LCR1; outputs with an LCR1 file are unchanged. Adds `panel-src/`, the panel buil
 
 GPL-3.0, see [LICENSE](LICENSE). onsight is a modified version of [RawHash2](https://github.com/CMU-SAFARI/RawHash)
 (GPL-3.0), changed in 2025-2026. It includes klib, minimap2's FASTA reader, thread and memory-pool code, and
-`hdf5_tools.hpp`, which keep their own copyright notices. If you use onsight, please also cite RawHash and RawHash2
-([doc/CITATION.md](doc/CITATION.md)).
+`hdf5_tools.hpp`, under the MIT license ([src/third_party/LICENSE](src/third_party/LICENSE)). If you use onsight,
+please also cite RawHash and RawHash2 ([doc/CITATION.md](doc/CITATION.md)).

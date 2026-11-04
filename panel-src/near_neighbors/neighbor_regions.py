@@ -4,15 +4,14 @@
 Per signature of the index (sigmeta rid): its sequence and the regions the check compares it with, as 2-bit DNA.
 Regions: every blastn hit of the signature in each own-strain and near-neighbor genome (each folder's paf/), so a
 signature that aligns to a genome in several pieces has a region for each. A region is on the own side when its
-genome's species taxid is the taxid of the signature's panel target. For each hit the file keeps every genome base a band on the signature can reach with a margin up to --max-pad:
-the whole signature carried through the hit, plus the margin. Windows that overlap on one contig are stored once.
+genome's species taxid is the taxid of the signature's panel target. For each hit the file keeps every genome base a
+band on the signature can reach with a margin up to --max-pad: the whole signature carried through the hit, plus the
+margin. Windows that overlap on one contig are stored once.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 neighbor_regions.py build --panel <panel.tsv> --targets <near folder>/targets.tsv --sigmeta <sigmeta.tsv> \
       --signatures <signatures.fasta> --near <near folder> [<near folder> ...] --own <own folder> --max-pad 0 \
       --out <regions.lcr>
-(--panel defaults to $S2S_PANEL.) The reads and cuts subcommands, test inputs for the C check against the Python
-check, are in s2s/archive/python-scripts/near_neighbors/neighbor_regions_with_tests.py.
 
 File layout (little-endian; onsight's src/neighbor_check.c reads it):
   header   magic "LCR1", u32 max_pad, u32 signatures, u32 genomes, u64 regions, u64 bases, u64 N runs, u64 name bytes
@@ -31,7 +30,6 @@ import argparse
 import csv
 import gzip
 import multiprocessing as mp
-import os
 import struct
 import time
 from collections import defaultdict
@@ -242,20 +240,18 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="what", required=True)
     b = sub.add_parser("build")
-    b.add_argument("--panel", type=Path, default=os.environ.get("S2S_PANEL"), help="panel.tsv (default: $S2S_PANEL)")
+    b.add_argument("--panel", type=Path, required=True, help="panel.tsv")
     b.add_argument("--targets", type=Path, required=True, help="targets.tsv of near_neighbors.py sources")
     b.add_argument("--sigmeta", type=Path, required=True)
     b.add_argument("--signatures", type=Path, required=True)
     b.add_argument("--near", type=Path, nargs="+", required=True)
     b.add_argument("--own", type=Path, required=True)
-    b.add_argument("--max-pad", type=int, default=0, help="largest margin the engine may use (default 0, adopted)")
+    b.add_argument("--max-pad", type=int, default=0, help="largest margin the engine may use (default 0)")
     b.add_argument("--processes", type=int, default=6)
     b.add_argument("--format", choices=("auto", "1", "2"), default="auto",
                    help="region file format: LCR1 (32-bit base positions), LCR2 (64-bit), auto (LCR2 only when needed)")
     b.add_argument("--out", type=Path, required=True)
     a = ap.parse_args()
-    if a.panel is None:
-        ap.error("give --panel or set S2S_PANEL")
     return build(a)
 
 

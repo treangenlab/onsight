@@ -12,9 +12,7 @@ genome or not, role, genome path).
   - A negative that carries the target's genome (>= 95% ANI over >= 50% of the target's reference genome, also a
     hybrid) is left out.
 - Negatives: every other named species ("Genus sp." and genus-only labels left out), at most --neg-cap per species
-  (random, --seed). With --target, only assemblies with a genome path (downloaded). Before 2026-10-28 this mode also
-  drew assemblies that were never downloaded, which gave blank lines in negatives.txt (the paper's Enterobacter sets
-  have 44-49 of about 1,510, E. cloacae 293 of 4,115), so their lists no longer reproduce.
+  (random, --seed). With --target, only assemblies with a genome path (downloaded).
 - Held-out genomes, put aside at random (--seed) before the targets are chosen, never targets:
   - reference lineage: 25% of the high-quality assemblies at >= 95% ANI to the reference genome, at least 3 and at
     most 20 (none when fewer than 6);
@@ -22,8 +20,6 @@ genome or not, role, genome path).
 - At most --target-cap targets per species (random, sorted by accession).
 
 Random draws, in this order from one generator: the negative cap, then the held-out genomes, then the target cap.
-This reproduces the lists of the paper's panels (built 2026-10-22 by the pilot script that had more selection rules):
-none of their sets had more targets than the cap. A set with more would get another random subset here.
 
 Writes in --out/<set>/:
   targets.txt, negatives.txt     one genome path per line (Seqwin's tar_paths and neg_paths)

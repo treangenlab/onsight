@@ -175,19 +175,9 @@ float calculate_mean_of_filtered_segment(float* segment,
     return count > 0 ? sum / count : 0; // Ensure we don't divide by zero
 }
 
-/**
- * @brief Generates events from peaks, prefix sums and s_len.
- *
- * @param km Pointer to memory manager.
- * @param sig Pointer to normalized signal array.
- * @param peaks Array of peak positions.
- * @param peak_size Size of peaks array.
- * @param s_len Length of the signal.
- * @param min_seg_len Minimum segment length (skip shorter segments, 0 = no min filter).
- * @param max_seg_len Maximum segment length (skip longer segments).
- * @param n_events Pointer to the number of events generated.
- * @return float* Pointer to the array of generated events.
- */
+/* The events between consecutive peaks, *n_events of them, each the mean of its segment's filtered samples
+ * (calculate_mean_of_filtered_segment); segments shorter than min_seg_len (0: no minimum) or longer than max_seg_len
+ * are skipped. */
 static inline ONS_NOINLINE float* gen_events(void *km,
 								float* sig,
 								const uint32_t *peaks,

@@ -1,10 +1,7 @@
 # Citing
 
-onsight builds on RawHash/RawHash2. If you use this work, please cite the
-upstream papers below, as RawHash2's README (<https://github.com/CMU-SAFARI/RawHash>) gives them.
-
-
-If you use RawHash (or RawHash2) in your work, please consider citing the following papers:
+onsight builds on RawHash and RawHash2 (<https://github.com/CMU-SAFARI/RawHash>). If you use onsight, please also
+cite them:
 
 ```bibtex
 @article{firtina_rawhash_2023,
@@ -40,5 +37,11 @@ If you use RawHash (or RawHash2) in your work, please consider citing the follow
 
 onsight keeps RawHash2's signal input, event detection (with the R9.4.1 segmentation parameters of
 [Sigmap](https://github.com/haowenz/sigmap)), quantization, index and seed lookup, and uses
-[klib](https://github.com/attractivechaos/klib) and code from [Minimap2](https://github.com/lh3/minimap2) (the FASTA
-reader, the thread pipeline, the memory pool).
+[klib](https://github.com/attractivechaos/klib) and code from [minimap2](https://github.com/lh3/minimap2) (the FASTA
+reader, the thread pipeline, the memory pool); their MIT notices are in `src/third_party/LICENSE`.
+
+The pore models in `extern/local_kmer_models/` come with RawHash2: `r94_means_only.txt` holds the level means of ONT's
+R9.4 6-mer model (`legacy_r9.4_180mv_450bps_6mer`, [kmer_models](https://github.com/nanoporetech/kmer_models)), and
+`uncalled_r1041_model_only_means.txt` the R10.4.1 9-mer model of [Uncalled4](https://github.com/skovaka/uncalled4).
+
+The panel build (`panel-src/`) finds signatures with [Seqwin](https://github.com/treangenlab/Seqwin).

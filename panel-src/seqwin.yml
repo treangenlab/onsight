@@ -8,4 +8,4 @@ channels:
   - bioconda
 
 dependencies:
-  - seqwin=0.3.1         # the version our panels were built with (stringency 3, see signatures/run_seqwin.py)
+  - seqwin=0.3.1         # the version the paper's panels were built with (stringency 3, see signatures/run_seqwin.py)

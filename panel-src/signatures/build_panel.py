@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Combine Seqwin outputs (one folder per species) into one signature panel for squig2sig.
+"""Combine Seqwin outputs (one folder per species) into one signature panel for onsight.
 
 Writes in --out:
   signatures.fasta  every signature, unfiltered, as Seqwin wrote it (eskap5 was built the same way)

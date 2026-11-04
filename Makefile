@@ -7,9 +7,9 @@
 #   ENABLE_HDF5=OFF    Disable HDF5 (.fast5)
 #   ENABLE_SLOW5=OFF   Disable SLOW5 (.slow5 / .blow5)
 #   DEBUG=1            Debug build (-O2 -fsanitize=address -g)
-#   PROFILE=1          Profiling build (-g -fno-omit-frame-pointer -DPROFILERH=1)
+#   FP_CONTRACT=off    ARM: no fused multiply-add, as x86 builds (src/Makefile)
 #
-# Hardware profiling (doc/HW_PROFILING.md):
+# Profiling builds (src/onsprof.h, scripts/hw_prof/):
 #   make prof          bin/onsight-prof (per-stage timers and work counts, -DONS_PROF)
 #   make attr          bin/onsight-attr (as prof, hot helpers out of line for perf)
 #   asan=1 / tsan=1    Sanitizers
@@ -78,8 +78,8 @@ help:
 	@echo "  make subset           Build without recompiling external dependencies"
 	@echo "  make ENABLE_POD5=OFF  Build without POD5 (likewise ENABLE_HDF5, ENABLE_SLOW5)"
 	@echo "  make DEBUG=1          Debug build with AddressSanitizer"
-	@echo "  make PROFILE=1        Build with profiling support"
-	@echo "  make prof             Build bin/onsight-prof (hardware profiling, doc/HW_PROFILING.md)"
+	@echo "  make FP_CONTRACT=off  ARM: no fused multiply-add, as x86 builds (results then follow x86)"
+	@echo "  make prof             Build bin/onsight-prof (per-stage timers and work counts, src/onsprof.h)"
 	@echo "  make attr             Build bin/onsight-attr (prof with hot helpers out of line, for perf)"
 	@echo "  make install          Put onsight on PATH"
 	@echo "  make clean            Remove all build artifacts"

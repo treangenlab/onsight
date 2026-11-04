@@ -10,16 +10,7 @@ static inline uint32_t ri_hash_fingerprint32(uint64_t hash)
 	return (uint32_t)hash ^ (uint32_t)(hash >> 32);
 }
 
-/**
- * @brief The read's seeds found in the index.
- *
- * @param km Pointer to memory pool.
- * @param ri Pointer to the index.
- * @param seeds The read's seeds.
- * @param n_seed_hits_ Pointer to the number of seeds collected.
- *
- * @return Pointer to the collected seeds.
- */
+/* The read's seeds found in the index, *n_seed_hits_ of them. */
 ri_seed_t *seed_lookup_all(void *km, const ri_idx_t *ri, const mm128_v *seeds, int32_t *n_seed_hits_)
 {
 	ri_seed_t *seed_hits;
@@ -53,18 +44,7 @@ ri_seed_t *seed_lookup_all(void *km, const ri_idx_t *ri, const mm128_v *seeds, i
 	return seed_hits;
 }
 
-/**
- * @brief The read's seeds found in the index, without those whose hash has more than max_occ
- * positions (the repeat cutoff, ri_detopt_update).
- *
- * @param km Pointer to memory pool.
- * @param _n_seed_m Number of seeds returned.
- * @param max_occ Seeds with more positions than this are dropped.
- * @param ri Pointer to the index.
- * @param seeds The read's seeds.
- *
- * @return Pointer to the collected seeds. Needs to be freed.
- */
+/* The read's seeds below the repeat cutoff (seed_lookup.h). */
 ri_seed_t *ri_seed_lookup(void *km,
                               int *_n_seed_m,
                               int max_occ,

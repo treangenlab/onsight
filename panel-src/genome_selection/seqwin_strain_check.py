@@ -12,7 +12,7 @@ and the B. spizizenii check.
 Writes in --out: skani.tsv (raw), strain_check.tsv (per species: assemblies, passing the rule, best ANI and aligned
 share, the reference genome's ANI and aligned share), verdict.txt.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 seqwin_strain_check.py --genome <fasta> --lists <dir> --target "<species>" --out <dir> --threads 16
 """
 import argparse

@@ -163,4 +163,4 @@ past 4.29 billion stored bases, as the 24-target panel's is. onsight 0.0.2 reads
 | `signatures/` | Seqwin (`run_seqwin.py`), the screen, the final sets, the panel's signature files |
 | `near_neighbors/` | near neighbors, own strains, extra strains, other targets, blastn, the region file |
 | `index/` | `build_index.sh`: one index (calls onsight) |
-| `panels/` | panel configs (`example.tsv`, `eskape.tsv`, `zymo_log.tsv`), `example_paths.tsv`, `mock_strains.tsv`; `paths.tsv` is ours |
+| `panels/` | panel configs (`example.tsv`, `eskape.tsv`, `zymo_log.tsv`), `example_paths.tsv`, `mock_strains.tsv` |

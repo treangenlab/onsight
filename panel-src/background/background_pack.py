@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The background genome pack: one genome per species from a local RefSeq library, the genomes every build screens
-its signatures against and draws near neighbors from (the paper's pack, 2026-10-19: 27,592 genomes).
+its signatures against and draws near neighbors from (the paper's pack has 27,592 genomes).
 
 One genome per species (NCBI species taxid) in each library folder (bacteria, archaea, fungi, viral): NCBI's reference
 genome if there is one, else the most complete assembly (complete, chromosome, scaffold, contig), ties broken by
@@ -13,7 +13,7 @@ RefSeq FTP site and kraken2-build --download-library name them). --summary: RefS
 Writes <out>.tsv: genome, kingdom, file, species_taxid, organism, genus, refseq_category, assembly_level, genome_size,
 batch (genus: the organism name's first word; empty for viruses).
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 background_pack.py --library <dir> --summary <assembly_summary_refseq.txt> --out <prefix>
 """
 import argparse

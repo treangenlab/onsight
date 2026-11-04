@@ -52,11 +52,11 @@ void ri_detopt_init(ri_detopt_t *opt)
     opt->peak_height = 0.4f; //--seg-peak-height
 
 	//Segment length filtering for gen_events
-	opt->min_segment_length = 0;   // no minimum by default (backward compatible)
-	opt->max_segment_length = 500; // existing behavior
+	opt->min_segment_length = 0;   // no minimum
+	opt->max_segment_length = 500;
 
-	/* The stream layer. Its defaults are the deliverable's (10-25 rerun): the search grid 0.50 to 2.00 at 0.01, the
-	 * sliding-window slope range from the last 199 confident chains, hits 12 events apart non-overlapping. */
+	/* The stream layer: the search grid 0.50 to 2.00 at 0.01, the slope grid renewed from the last 199 confident chains,
+	 * hits at least 12 events apart counted as non-overlapping. */
 	opt->stream_emit_fd            = -1;    /* no read records unless --stream-emit-fd */
 	opt->stream_diag_slope_min     = 0.50f;
 	opt->stream_diag_slope_max     = 2.00f;
@@ -66,16 +66,16 @@ void ri_detopt_init(ri_detopt_t *opt)
 	opt->stream_slope_alpha        = 1e-7;
 	opt->stream_slope_width        = 10.0f; /* the engine's band width */
 	opt->stream_slope_width_sd     = 0;     /* --r10 sets it */
-	opt->stream_slope_cover        = 0.95f; /* 5th smallest to 5th largest of the 199, covers the next slope with probability 190/200 */
+	opt->stream_slope_cover        = 0.95f; /* 5th smallest to 5th largest of 199: holds the next slope w.p. 190/200 */
 
 	/* Read and target calls: off unless --read-calls or --target-calls. The target call averages over read p-value
-	 * cutoffs t_min to 1e-3 (user, 10-24); alpha_run 0.01 is the chance of any false target call per run. */
+	 * cutoffs t_min to 1e-3; alpha_run 0.01 is the chance of any false target call per run. */
 	opt->calls_panel                 = NULL;
 	opt->read_calls_path             = NULL;
-	opt->target_calls_path          = NULL;
+	opt->target_calls_path           = NULL;
 	opt->n_alpha_read                = 0;
-	opt->t_min                       = 1e-8;  /* about 1 / the unrelated tests in the 24-target chance check, 100.5 M (11-01) */
+	opt->t_min                       = 1e-8;  /* about 1 / the unrelated comparisons in the calibration data (100.5 M) */
 	opt->alpha_run                   = 0.01;
-	opt->neighbor_regions               = NULL;
-	opt->neighbor_pore_model            = NULL;
+	opt->neighbor_regions            = NULL;
+	opt->neighbor_pore_model         = NULL;
 }

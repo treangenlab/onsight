@@ -862,7 +862,6 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 	ri_kfree(ri->km, ri->pore->pore_inds); 
 	ri->pore->pore_inds = 0;
 	ri_kfree(ri->km, ri->pore);
-	// ri->pore = 0;
 
 	for (i = 0; i < ri->n_seq; ++i) {
 		if (ri->seq[i].name) {

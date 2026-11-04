@@ -104,15 +104,15 @@ double ri_log_binom_cdf(uint64_t m, uint64_t n, double q)
 	return log1p(-exp(log_upper(m + 1, n, q)));
 }
 
-/* Target call at one cutoff: log LR of c >= 1 calls in n reads, rate log-uniform on [p0, 1] against p0. Equal to target_call.py's
- * betaln(c, n - c + 1) + log I_{1-p0}(n - c + 1, c) - log ln(1/p0) - c log p0 - (n - c) log(1 - p0), since
+/* Target call at one cutoff: log LR of c >= 1 calls in n reads, rate log-uniform on [p0, 1] against p0, that is
+ * betaln(c, n - c + 1) + log I_{1-p0}(n - c + 1, c) - log ln(1/p0) - c log p0 - (n - c) log(1 - p0), with
  * B(c, n - c + 1) = 1 / (c C(n, c)) and I_{1-p0}(n - c + 1, c) = P[Bin(n, p0) <= c - 1]. */
 double ri_calls_log_lr(uint64_t c, uint64_t n, double p0)
 {
 	return ri_log_binom_cdf(c - 1, n, p0) - log((double)c) - log_pmf(c, n, p0) - log(log(1.0 / p0));
 }
 
-/* Target call averaged over cutoffs (target_call.py): ln of M = (1/L) int LR_t(c(t), n) dt/t over t from t_min to
+/* Target call averaged over cutoffs: ln of M = (1/L) int LR_t(c(t), n) dt/t over t from t_min to
  * t_max, L = ln(t_max / t_min), c(t) the calls with p <= t (p sorted, each at least t_min). c(t) is constant between the
  * p values, so the integral is taken piecewise there, in spans of at most 1 / (c + 1) in ln t with 4-point
  * Gauss-Legendre; below the smallest p, c(t) = 0 adds nothing. */
@@ -179,7 +179,7 @@ static void calls_map(ri_calls_t *c, const char *taxon, int e)
 	kh_val(c->of, k) = e;
 }
 
-/* Columns taxon and name; rows sharing a name are one entry, in order of first appearance (zymo_results.py). */
+/* Columns taxon and name; rows sharing a name are one entry, in order of first appearance. */
 static int calls_load_panel(ri_calls_t *c, const char *path)
 {
 	char line[8192];
@@ -356,7 +356,7 @@ int ri_read_pvalue(const ri_calls_t *c, ri_calls_scratch_t *x, const ri_calls_se
 	uint32_t i;
 	double best_p = 1.0;
 	for (e = 0; e < c->n_entry; ++e) { x->pick[e] = -1; x->pick_count[e] = 0; }
-	/* each entry's set: the largest count, the later set on ties (stream_replay.load_cell) */
+	/* each entry's set: the largest count, the later set on ties */
 	for (i = 0; i < n_sets; ++i) {
 		khint_t k = kh_get(calls_entry, c->of, sets[i].taxon);
 		if (k == kh_end(c->of)) continue;

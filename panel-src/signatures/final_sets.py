@@ -12,7 +12,7 @@ holds the config row, the build's target and negative counts, signatures built, 
 and as checks only the mock genomes. --root/final/manifest.tsv indexes every set written so far. build_panel.py then
 makes the panel from the final/<set>/ folders.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 final_sets.py --root <dir> --config <sets.tsv> [--sets <set,...>]
 """
 import argparse

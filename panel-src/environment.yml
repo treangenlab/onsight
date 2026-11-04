@@ -1,7 +1,7 @@
 # onsight panel build environment (panel-src). Seqwin runs in its own environment, seqwin.yml.
 #   conda env create -f panel-src/environment.yml
 #   conda activate onsight-panel
-# Versions are the ones our panels were built with.
+# Versions are the ones the paper's panels were built with.
 name: onsight-panel
 
 channels:

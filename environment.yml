@@ -1,36 +1,17 @@
-# onsight build environment.
+# onsight build environment, Linux x86-64. On ARM64 (for example NVIDIA Jetson) use sysroot_linux-aarch64=2.17.
 #
 #   conda env create -f environment.yml
 #   conda activate onsight
 #   make
 #
-# Linux only. environment.yml does not support platform selectors, and
-# sysroot_linux-64 does not exist on macOS.
-#
-# Why sysroot_linux-64=2.17:
-#   conda-forge's compilers target whatever sysroot is installed, and that sets the
-#   MINIMUM glibc the resulting binary requires -- independent of the host. The default
-#   (2.34) produces binaries that will not run on RHEL 8 (glibc 2.28). Pinning 2.17
-#   (conda-forge's own portability baseline, and what libstdc++ targets) yields one
-#   binary that runs on every machine we use.
-#
-# Why hdf5=1.14.3:
-#   the VBZ plugin's builds for HDF5 1.14 need exactly 1.14.3, and it is the version with a
-#   plugin build for both linux-64 and linux-aarch64. src/hdf5_tools.hpp carries
-#   H5_VERSION_GE(1, 12, 0) guards for the H5Oget_info signature change, but nothing
-#   anticipating HDF5 2.x. 1.14.3 gives the same outputs as 1.12 (checked 2026-10-28 on
-#   VBZ and gzip FAST5). Do not bump without testing.
-#
-# Why ont_vbz_hdf_plugin:
-#   FAST5 files written by MinKNOW since about 2020 store the signal VBZ-compressed;
-#   HDF5 reads them only with ONT's plugin, which conda finds through HDF5_PLUGIN_PATH
-#   (set when the environment is activated). POD5 and SLOW5/BLOW5 do not need it.
-#
-# Not available from conda, handled by `make`:
-#   slow5lib  -- no conda package exists (`slow5tools` is the CLI, not the library);
-#                built from extern/slow5lib
-#   POD5      -- conda's `pod5` is a noarch Python package, not the C static libs;
-#                downloaded as a prebuilt tarball at build time
+# sysroot_linux-64=2.17: sets the oldest glibc the binary needs (conda's default, 2.34, gives binaries that do not run
+#   on RHEL 8), so one build runs on RHEL 7 through current Ubuntu.
+# hdf5=1.14.3: the VBZ plugin's builds for HDF5 1.14 need exactly 1.14.3, on linux-64 and linux-aarch64. It gives the
+#   same outputs as 1.12; src/third_party/hdf5_tools.hpp is not ready for HDF5 2.x, so do not bump without testing.
+# ont_vbz_hdf_plugin: FAST5 files written by MinKNOW since about 2020 store the signal VBZ-compressed, which HDF5
+#   reads only with this plugin (HDF5_PLUGIN_PATH is set when the environment is activated). POD5 and SLOW5/BLOW5
+#   do not need it.
+# Not from conda: slow5lib is built from extern/slow5lib, and make downloads POD5's C library.
 name: onsight
 
 channels:

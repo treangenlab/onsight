@@ -12,7 +12,7 @@ can be >= 99.9% ANI to a candidate, so the list may hold just those.
 Writes <out>/genomes.tsv (genome, file), <out>/taxids.tsv (genome, species_taxid, near_neighbor_of = the target's
 signature sets, organism, representative, ani_to_read_sources) and <out>/considered.tsv, for blast_homologs.py.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 near_neighbor_strains.py --near <near-neighbor folder> --target Enterobacter --read-sources <list> \
         --summary <assembly_summary_refseq.txt> --libraries <dir> [<dir> ...] --out <dir>
 """

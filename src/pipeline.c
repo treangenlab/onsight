@@ -75,14 +75,6 @@ typedef struct {
 #endif
 } step_mt;
 
-#ifdef PROFILERH
-double ri_filereadtime = 0.0;
-double ri_eventtime = 0.0;
-double ri_seedstime = 0.0;
-double ri_hitstime = 0.0;
-double ri_hitsteptime = 0.0;
-#endif
-
 static ri_tbuf_t *ri_tbuf_init(void)
 {
 	ri_tbuf_t *b;
@@ -111,17 +103,9 @@ static void read_seed_hits(const ri_idx_t *ri,
 	uint32_t n_events = 0, n_events_sum = 0;
 	double mean_sum = 0, std_dev_sum = 0;
 
-	#ifdef PROFILERH
-	double events_t = ri_realtime();
-	#endif
-
 	float* events = detect_events(b->km, s_len, sig,
 		opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height,
 		opt->min_segment_length, opt->max_segment_length, &mean_sum, &std_dev_sum, &n_events_sum, &n_events);
-
-	#ifdef PROFILERH
-	ri_eventtime += ri_realtime() - events_t;
-	#endif
 
 	#ifdef ONS_PROF
 	ons_prof_read_t *pr = ons_prof_cur;
@@ -154,10 +138,6 @@ static void read_seed_hits(const ri_idx_t *ri,
 		}
 	}
 
-	#ifdef PROFILERH
-	double seeds_t = ri_realtime();
-	#endif
-
 	#ifdef ONS_PROF
 	uint64_t pt0 = pr ? ons_now() : 0;
 	#endif
@@ -175,18 +155,9 @@ static void read_seed_hits(const ri_idx_t *ri,
 	if (pr) { pr->t_seeds += ons_now() - pt0; pr->n_seeds = (uint32_t)seeds.n; }
 	#endif
 
-	#ifdef PROFILERH
-	ri_seedstime += ri_realtime() - seeds_t;
-	double hits_t = ri_realtime();
-	#endif
-
 	//Seeding
 	ri_collect_seed_hits(b->km, opt, opt->mid_occ, ri, rd, &seeds);
 	if(seeds.a){ri_kfree(b->km, seeds.a); seeds.a = NULL; seeds.n = seeds.m = 0;}
-
-	#ifdef PROFILERH
-	ri_hitstime += ri_realtime() - hits_t;
-	#endif
 
 	rd->offset += n_events;
 }
@@ -356,9 +327,6 @@ static void *read_pipeline(void *shared,
 	int i, k;
     pipeline_mt *p = (pipeline_mt*)shared;
     if (step == 0) { // step 0: a minibatch of signals
-		#ifdef PROFILERH
-		double file_t = ri_realtime();
-		#endif
         step_mt *s;
         s = (step_mt*)calloc(1, sizeof(step_mt));
 		#ifdef ONS_PROF
@@ -366,10 +334,6 @@ static void *read_pipeline(void *shared,
 		#endif
 
 		s->sig = read_signal_batch(p, p->mini_batch_size, &s->n_sig);
-
-		#ifdef PROFILERH
-		ri_filereadtime += ri_realtime() - file_t;
-		#endif
 
 		if (s->n_sig) {
 			s->p = p;
@@ -398,18 +362,12 @@ static void *read_pipeline(void *shared,
 		}
     } else if (step == 1) { // step 1: each read's seed hits
 		step_mt *s = (step_mt*)in;
-		#ifdef PROFILERH
-		double hitstep_t = ri_realtime();
-		#endif
 		#ifdef ONS_PROF
 		s->prof_t1_start = ons_now();
 		#endif
 		kt_for(p->n_threads, hits_worker_for, in, s->n_sig);
 		#ifdef ONS_PROF
 		s->prof_step1 = ons_now() - s->prof_t1_start;
-		#endif
-		#ifdef PROFILERH
-		ri_hitsteptime += ri_realtime() - hitstep_t;
 		#endif
 		return in;
     } else if (step == 2) { // step 2: output
@@ -589,10 +547,6 @@ int ri_detect_files(const ri_idx_t *idx,
 	#endif
 
 	kt_pipeline(pl_threads, read_pipeline, &pl, 3);
-
-	#ifdef PROFILERH
-	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Event detection: %.6f sec; Seeds: %.6f sec; Seed lookup and hits: %.6f sec; Seed-hit step (all threads): %.6f sec\n", __func__, ri_filereadtime, ri_eventtime, ri_seedstime, ri_hitstime, ri_hitsteptime);
-	#endif
 
 	if (pl.sig_profile_fp) {
 		ri_profile_write(pl.profile, pl.sig_profile_fp);

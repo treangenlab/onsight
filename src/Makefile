@@ -7,7 +7,7 @@
 #   ENABLE_HDF5=OFF    Disable HDF5 (.fast5)
 #   ENABLE_SLOW5=OFF   Disable SLOW5 (.slow5 / .blow5)
 #   DEBUG=1            Debug build (-O2 -fsanitize=address -g)
-#   PROFILE=1          Profiling build (-g -fno-omit-frame-pointer -DPROFILERH=1)
+#   FP_CONTRACT=off    ARM: no fused multiply-add, as x86 builds (see Architecture-specific flags)
 #   ONS_PROF=1         Hardware-characterization build (see onsprof.h); objects go
 #                      to obj-prof/ and the binary is onsight-prof
 #   ONS_ATTRIB=1       With ONS_PROF: hot helpers out of line for perf attribution;
@@ -26,19 +26,7 @@ ENABLE_POD5  ?= ON
 ENABLE_HDF5  ?= ON
 ENABLE_SLOW5 ?= ON
 
-# Deprecated aliases: NOxxx=1 still disables. Kept one cycle for the old README.
-ifeq ($(NOPOD5),1)
-    ENABLE_POD5  := OFF
-endif
-ifeq ($(NOHDF5),1)
-    ENABLE_HDF5  := OFF
-endif
-ifeq ($(NOSLOW5),1)
-    ENABLE_SLOW5 := OFF
-endif
-
-# Derive the internal NOxxx flags the rest of this file already tests against.
-# `override` is required because these may also arrive on the command line.
+# The internal NOxxx flags tested below; `override`, so ENABLE_* decides even if NOxxx is on the command line.
 override NOPOD5  := $(if $(filter ON on On,$(ENABLE_POD5)),0,1)
 override NOHDF5  := $(if $(filter ON on On,$(ENABLE_HDF5)),0,1)
 override NOSLOW5 := $(if $(filter ON on On,$(ENABLE_SLOW5)),0,1)
@@ -98,10 +86,6 @@ else
     OPT_FLAGS = -O3
 endif
 
-ifdef PROFILE
-    OPT_FLAGS += -g -fno-omit-frame-pointer
-    BASE_DEFS += -DPROFILERH=1
-endif
 
 ifdef ONS_PROF
     OPT_FLAGS += -g -fno-omit-frame-pointer
@@ -119,11 +103,10 @@ ARCH_DEFS  =
 
 # --- x86 / x86_64 ---
 ifneq ($(filter x86_64 i686 i386,$(SYSTEM_PROCESSOR)),)
-    # x86-64-v3 (AVX2/BMI/FMA) is the common baseline across our machines:
-    # Intel Skylake-AVX512 (gho) and AMD EPYC Zen 2 (p00) both satisfy it, while
-    # -march=native emits AVX-512 on the former that the latter cannot execute.
-    # -ffp-contract=off keeps float results reproducible across hosts.
-    ARCH_FLAGS += -march=x86-64-v3 -mtune=generic -ffp-contract=off
+    # x86-64-v3 (AVX2, BMI, FMA: Intel Haswell and AMD Zen or newer); -march=native could emit AVX-512, which
+    # other x86 machines cannot run. No fused multiply-add (FP_CONTRACT below), so every x86 host gives the same floats.
+    ARCH_FLAGS += -march=x86-64-v3 -mtune=generic
+    FP_CONTRACT ?= off
     # Detect immintrin.h availability
     HAVE_IMMINTRIN := $(shell echo '\#include <immintrin.h>' | \
         $(if $(filter 1,$(NEED_CXX)),$(CXX),$(CC)) -x c -fsyntax-only - 2>/dev/null && echo 1 || echo 0)
@@ -151,6 +134,12 @@ ifneq ($(filter arm armv7l armv6l,$(SYSTEM_PROCESSOR)),)
     ifeq ($(MARCH_OK),1)
         ARCH_FLAGS += -march=native
     endif
+endif
+
+# Fused multiply-add. x86 builds turn it off (off above); ARM builds keep the compiler's default, which fuses, as in
+# the paper's Jetson runs. FP_CONTRACT=off gives ARM the x86 setting (an x86 build with fast gives the Jetson's calls).
+ifneq ($(FP_CONTRACT),)
+    ARCH_FLAGS += -ffp-contract=$(FP_CONTRACT)
 endif
 
 # =====================================================================
@@ -192,7 +181,7 @@ ifneq ($(NOPOD5),1)
         ifneq ($(filter arm64 ARM64 aarch64,$(SYSTEM_PROCESSOR)),)
             POD5_ARCHIVE = lib_pod5-$(POD5_VERSION)-osx-14.0-arm64.tar.gz
         else
-            $(error POD5 $(POD5_VERSION) has no pre-built binaries for macOS x86_64. Use NOPOD5=1.)
+            $(error POD5 $(POD5_VERSION) has no pre-built binaries for macOS x86_64. Use ENABLE_POD5=OFF.)
         endif
         POD5_LIB_SUBDIR      = lib
         POD5_EXTRA_LIBS_FILE =
@@ -245,9 +234,7 @@ HDF5_LIB         ?= hdf5
 
 ifneq ($(NOHDF5),1)
     INCLUDES += -I$(HDF5_INCLUDE_DIR)
-    # Link the static archive when one exists (vendored build); otherwise link
-    # shared. conda ships only libhdf5.so, and this line previously hardcoded
-    # ".a" - which is why local-hdf5-compat/libhdf5.a -> ...libhdf5.so existed.
+    # The static archive when one exists (the extern/ build), otherwise the shared library (conda ships only .so)
     ifneq ($(wildcard $(HDF5_LIB_DIR)/lib$(HDF5_LIB).a),)
         LIBS += $(HDF5_LIB_DIR)/lib$(HDF5_LIB).a
     else
@@ -282,8 +269,7 @@ endif
 # bundle their dependencies), so zstd is required whenever POD5 or SLOW5 is on.
 #
 # Prefer conda's zstd. This must move together with HDF5 above: linking a shared
-# libhdf5 while zstd stayed statically vendored would put zstd 1.4.7 (static) and
-# 1.5.7 (shared, pulled in via the shared-library graph) in one process.
+# libhdf5 while zstd stayed static from extern/ would put two zstd versions in one process.
 ZSTD_NEEDED = 0
 ifneq ($(NOPOD5),1)
     ZSTD_NEEDED = 1
@@ -449,7 +435,7 @@ ifneq ($(HDF5_COMPILE),0)
 	cd $(HDF5_DIR) && \
 		mkdir -p build && \
 		./configure --enable-threadsafe --disable-hl --prefix="$(HDF5_BUILD_DIR)" && \
-		$(MAKE) -j && \
+		$(MAKE) && \
 		$(MAKE) install
 endif
 endif
@@ -527,7 +513,7 @@ help:
 	@echo ""
 	@echo "src/Makefile options:"
 	@echo "  DEBUG=1       Debug build (-O2 -fsanitize=address -g)"
-	@echo "  PROFILE=1     Profiling build (-g -fno-omit-frame-pointer)"
+	@echo "  FP_CONTRACT=off   ARM: no fused multiply-add, as x86 builds"
 	@echo "  ENABLE_POD5=OFF   Disable POD5 (likewise ENABLE_HDF5, ENABLE_SLOW5)"
 	@echo "  asan=1        Enable AddressSanitizer"
 	@echo "  tsan=1        Enable ThreadSanitizer"

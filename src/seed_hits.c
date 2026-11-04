@@ -36,15 +36,11 @@ typedef struct {
 
 static void sig_add_occs(const ri_detopt_t *opt, ri_sig_hits_t *s, const ri_occ_t *o, uint32_t m, ri_occ_tabs_t *t);
 
-/**
- * Adds a read's seed hits, per signature: every index position of every seed found in the index, but for
- * the seeds above the repeat cutoff max_occ (ri_seed_lookup). The positions are first grouped by signature, in the
- * order the seeds met them, and each signature's are then added one by one as before (sig_add_occs): the hits, their
- * order and their sums are those of adding every position in seed order, without hash tables over the whole read.
- * One call per read.
- *
- * @param km     		thread-local memory pool; using NULL falls back to malloc()
- */
+/* Adds a read's seed hits, per signature: every index position of every seed found in the index, but for the seeds
+ * above the repeat cutoff max_occ (ri_seed_lookup). The positions are first grouped by signature, in the order the
+ * seeds met them, then each signature's are added one by one (sig_add_occs): the same hits, order and sums as adding
+ * every position in seed order, without hash tables over the whole read. One call per read; km: the thread's
+ * memory pool (NULL: malloc). */
 void ri_collect_seed_hits(void *km,
 								  const ri_detopt_t *opt,
 								  int max_occ,

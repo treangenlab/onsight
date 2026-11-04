@@ -2,15 +2,16 @@
  *
  * A read's slope is its events per position of the signature. It is not exactly 1, because event detection splits
  * some bases into two events and merges others (real R9.4.1 reads run at about 1.05-1.1). Reads start on the search
- * grid (--stream-diag-slopes). A read whose call has a read p-value at most alpha on the search grid gives its chain:
- * the slope fitted by least squares through the hits of its best band and the two bands beside it, with the chain's
- * span of signature positions and the residual SD. The last n chains are kept in a ring; after each minibatch with
- * the ring full, the grid becomes the ring's [min, max] slope at step W / S, S the median span and W width events, or
- * 4 times the median residual SD.
+ * grid (--stream-diag-slopes). Per read, the signature of its call and the one with the most non-overlapping hits
+ * are refitted on the search grid: the slope by least squares through the hits of the best band and the two bands
+ * beside it, with the chain's span of signature positions and its residual SD. The refit with the smaller read
+ * p-value there goes into a ring of the last n chains when that p is at most alpha. After each minibatch with the
+ * ring full, the grid spans the middle --slope-grid share of the ring's slopes (0.95 of 199: the 5th smallest to the
+ * 5th largest) at step W / S, S the median span and W the width in events, or 4 times the median residual SD.
  *
  * In: per read, its seed hits per signature and its call by read p-value. Out: the slope grid of the next minibatch;
- * per read, its chain for the read record; the slopes lines of fd 3. State: the ring (ri_slopes_t), changed in read
- * order; ri_slopes_buf_t holds one thread's refit buffers.
+ * per read, its chain for the read record. State: the ring (ri_slopes_t), changed in read order; ri_slopes_buf_t
+ * holds one thread's refit buffers.
  */
 #ifndef SLOPE_RANGE_H
 #define SLOPE_RANGE_H

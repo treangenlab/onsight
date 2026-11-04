@@ -27,7 +27,7 @@ Subcommands, in order:
               and taxids.tsv (the homolog folder lists for blast_homologs.py; near_neighbor_of = the target's sets)
 A skani table is reused only when it was made from the same genome lists (saved next to it).
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 near_neighbors.py sources --config panels/<panel>.tsv --sets <root>/sets --taxdump <dir> --out <dir>
     python3 near_neighbors.py ani --background <genomes.tsv> --out <dir> [--skani skani --threads 4]
     python3 near_neighbors.py candidates --background <genomes.tsv> --taxdump <dir> --out <dir>

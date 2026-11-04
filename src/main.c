@@ -7,10 +7,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-#ifndef NAN
-#define NAN (0.0/0.0)
-#endif
-
 #include "utils.h"
 #include "options.h"
 #include "signal_input.h"
@@ -201,9 +197,8 @@ int main(int argc, char *argv[])
 		else if (c == 301) { //--q-mid-occ
 			opt.min_mid_occ = strtol(o.arg, &s, 10); // min
 			if (*s == ',') opt.max_mid_occ = strtol(s + 1, &s, 10); //max
-			// opt.q_mid_occ = atoi(o.arg);// --q-mid-occ
 		}
-		else if (c == 302) opt.mid_occ_frac = atof(o.arg);// --occ-frac
+		else if (c == 302) opt.mid_occ_frac = atof(o.arg);// --mid_occ_frac
 		else if (c == 303) opt.min_events = (uint32_t)atoi(o.arg); // --min-events
 		else if (c == 332) opt.window_length1 = atoi(o.arg);// --seg-window-length1
 		else if (c == 333) opt.window_length2 = atoi(o.arg);// --seg-window-length2
@@ -405,43 +400,49 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "Usage: %s --pore r9|r10 --panel-dir DIR -o OUT [options] <reads.fast5|.pod5|.slow5|.blow5|folder> [...]\n", invoked);
 		fprintf(fp_help, "       %s --pore r9|r10 [options] <index.idx> <reads> [...]\n", invoked);
 		fprintf(fp_help, "       %s --pore r9|r10 -d <index.idx> --metadata <signatures.csv> <signatures.fa>\n", invoked);
-		fprintf(fp_help, "  Detect the panel's targets in the reads, or (-d, no reads) build an index. The defaults are the settings of the\n");
-		fprintf(fp_help, "  results (strobe-events, the sliding-window slope range, the target call averaged over read p-value cutoffs).\n");
-
-		fprintf(fp_help, "\n  General:\n");
-		fprintf(fp_help, "    --pore STR   the reads' pore, r9 (R9.4.1) or r10 (R10.4.1); required. Sets -k, the event segmentation\n");
-		fprintf(fp_help, "                 and the pore model shipped with the engine\n");
-		fprintf(fp_help, "    --panel-dir DIR  the panel folder: DIR/panel.tsv, DIR/r9/index.idx and DIR/r10/index.idx (each with its\n");
-		fprintf(fp_help, "                 .sigmeta.tsv), DIR/regions.lcr (the near-neighbor check, if there); --panel, --neighbor-check win\n");
-		fprintf(fp_help, "    -o DIR       write read_calls.tsv and target_calls.tsv in DIR; --read-calls, --target-calls win\n");
-		fprintf(fp_help, "    --debug      also write sig_summary.tsv in DIR: each read's top five signatures. It sorts every read's\n");
-		fprintf(fp_help, "                 signatures, so the run is slower; read and target calls do not change\n");
-		fprintf(fp_help, "    -h, --help   show this help message\n");
-		fprintf(fp_help, "    --version    show version number\n");
-		fprintf(fp_help, "    -t INT       number of threads [%d]\n", n_threads);
-		fprintf(fp_help, "    --io-thread INT   I/O threads for S/BLOW5 (must be < -t) [%d]\n", io_n_threads);
-		fprintf(fp_help, "    -K NUM       minibatch size in signal samples; the slope grid changes between minibatches [4M]\n");
-
-		fprintf(fp_help, "\n  Index build:\n");
-		fprintf(fp_help, "    -d FILE      write the index to FILE (and FILE.sigmeta.tsv)\n");
-		fprintf(fp_help, "    -p FILE      pore model, also read by --neighbor-check [the --pore one shipped with the engine]\n");
-		fprintf(fp_help, "    -k INT       k-mer size of the pore model [6 with --pore r9, 9 with --pore r10]\n");
-		fprintf(fp_help, "    --level_column INT   0-based column of the mean levels in the pore model [%d]\n", ipt.lev_col);
-		fprintf(fp_help, "    --r10        the same as --pore r10\n");
-		fprintf(fp_help, "    --metadata FILE      signature metadata CSV (signature name, source taxon)\n");
-		fprintf(fp_help, "    --seed-mode STR      strobe (strobe-events) or contig [%s]\n", (ipt.flag & RI_I_SEED_MODE_STROBE) ? "strobe" : "contig");
-		fprintf(fp_help, "    --strobe-ks INT      events per strobe (as -e) [%d]\n", ipt.e);
-		fprintf(fp_help, "    --strobe-wmin INT    min gap in events between the strobes [%d]\n", ipt.strobe_w_min);
-		fprintf(fp_help, "    --strobe-wmax INT    max gap in events between the strobes [%d]\n", ipt.strobe_w_max);
-		fprintf(fp_help, "    --strobe-n INT       strobes per seed (only 2) [%d]\n", ipt.strobe_n);
-		fprintf(fp_help, "    -e INT       events per contiguous seed (--seed-mode contig) [8]\n");
-		fprintf(fp_help, "    -w INT       minimizer window of contiguous seeds; 0 keeps every seed [%d]\n", ipt.w);
-		fprintf(fp_help, "    -q INT       quantization bits [%d]\n", ipt.q);
-		fprintf(fp_help, "    --fine-min FLOAT, --fine-max FLOAT, --fine-range FLOAT   quantization range [%g, %g, %g]\n", ipt.fine_min, ipt.fine_max, ipt.fine_range);
-		fprintf(fp_help, "    --sig-diff INT       skip an event whose quantized value differs from the last by <= INT; -1 keeps all [%d]\n", ipt.diff);
-
-		fprintf(fp_help, "\n  Event detection:\n");
-		fprintf(fp_help, "    (set by --pore; these override it)\n");
+		fprintf(fp_help, "  Detects the panel's targets in the reads, or builds an index (-d, no reads). The defaults are the\n");
+		fprintf(fp_help, "  settings used in the paper.\n");
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  General:\n");
+		fprintf(fp_help, "    --pore STR                the reads' pore, r9 (R9.4.1) or r10 (R10.4.1); required. Sets\n");
+		fprintf(fp_help, "                              -k, the event detection and the pore model shipped with onsight\n");
+		fprintf(fp_help, "    --panel-dir DIR           the panel folder: panel.tsv, r9/index.idx, r10/index.idx and\n");
+		fprintf(fp_help, "                              regions.lcr (the near-neighbor check, if there); --panel and\n");
+		fprintf(fp_help, "                              --neighbor-check override\n");
+		fprintf(fp_help, "    -o DIR                    write read_calls.tsv and target_calls.tsv in DIR; --read-calls\n");
+		fprintf(fp_help, "                              and --target-calls override\n");
+		fprintf(fp_help, "    --debug                   also write sig_summary.tsv in DIR: each read's top five\n");
+		fprintf(fp_help, "                              signatures; slower, the same calls\n");
+		fprintf(fp_help, "    -t INT                    threads [%d]\n", n_threads);
+		fprintf(fp_help, "    --io-thread INT           I/O threads for SLOW5/BLOW5, at most -t [%d]\n", io_n_threads);
+		fprintf(fp_help, "    -K NUM                    minibatch size in signal samples; the slope grid changes between\n");
+		fprintf(fp_help, "                              minibatches [4M]\n");
+		fprintf(fp_help, "    -h, --help                show this help\n");
+		fprintf(fp_help, "    --version                 show the version\n");
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Index build:\n");
+		fprintf(fp_help, "    -d FILE                   write the index to FILE (and FILE.sigmeta.tsv)\n");
+		fprintf(fp_help, "    -p FILE                   pore model, also used by --neighbor-check [the one shipped for\n");
+		fprintf(fp_help, "                              --pore]\n");
+		fprintf(fp_help, "    -k INT                    k-mer size of the pore model [6 with --pore r9, 9 with --pore\n");
+		fprintf(fp_help, "                              r10]\n");
+		fprintf(fp_help, "    --level_column INT        0-based column of the mean levels in the pore model [%d]\n", ipt.lev_col);
+		fprintf(fp_help, "    --r10                     the same as --pore r10\n");
+		fprintf(fp_help, "    --metadata FILE           signature metadata CSV (signature name, source taxon)\n");
+		fprintf(fp_help, "    --seed-mode STR           strobe (strobe-events) or contig [%s]\n", (ipt.flag & RI_I_SEED_MODE_STROBE) ? "strobe" : "contig");
+		fprintf(fp_help, "    --strobe-ks INT           events per strobe (as -e) [%d]\n", ipt.e);
+		fprintf(fp_help, "    --strobe-wmin INT         min gap in events between the strobes [%d]\n", ipt.strobe_w_min);
+		fprintf(fp_help, "    --strobe-wmax INT         max gap in events between the strobes [%d]\n", ipt.strobe_w_max);
+		fprintf(fp_help, "    --strobe-n INT            strobes per seed (only 2) [%d]\n", ipt.strobe_n);
+		fprintf(fp_help, "    -e INT                    events per contiguous seed (--seed-mode contig) [8]\n");
+		fprintf(fp_help, "    -w INT                    minimizer window of contiguous seeds; 0 keeps every seed [%d]\n", ipt.w);
+		fprintf(fp_help, "    -q INT                    quantization bits [%d]\n", ipt.q);
+		fprintf(fp_help, "    --fine-min, --fine-max, --fine-range FLOAT\n");
+		fprintf(fp_help, "                              quantization range [%g, %g, %g]\n", ipt.fine_min, ipt.fine_max, ipt.fine_range);
+		fprintf(fp_help, "    --sig-diff INT            skip an event within INT of the last quantized value; -1 keeps\n");
+		fprintf(fp_help, "                              all [%d]\n", ipt.diff);
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Event detection (set by --pore; these override it):\n");
 		fprintf(fp_help, "    --seg-window-length1 INT  short t-test window [%u]\n", opt.window_length1);
 		fprintf(fp_help, "    --seg-window-length2 INT  long t-test window [%u]\n", opt.window_length2);
 		fprintf(fp_help, "    --seg-threshold1 FLOAT    peak threshold of the short window [%g]\n", opt.threshold1);
@@ -450,49 +451,63 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    --min-seg-length INT      skip events shorter than INT samples [%u]\n", opt.min_segment_length);
 		fprintf(fp_help, "    --max-seg-length INT      skip events longer than INT samples [%u]\n", opt.max_segment_length);
 		fprintf(fp_help, "    --min-events INT          skip reads with fewer events [%u]\n", opt.min_events);
-
-		fprintf(fp_help, "\n  Seed hits per signature:\n");
-		fprintf(fp_help, "    --mid_occ_frac FLOAT      repeat cutoff: ignore seeds whose hash has more positions than this top fraction [%g]\n", opt.mid_occ_frac);
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Seed hits per signature:\n");
+		fprintf(fp_help, "    --mid_occ_frac FLOAT      repeat cutoff: ignore seeds whose hash is in this top fraction\n");
+		fprintf(fp_help, "                              by positions [%g]\n", opt.mid_occ_frac);
 		fprintf(fp_help, "    --q-mid-occ INT1[,INT2]   bounds of the repeat cutoff [%d,%d]\n", opt.min_mid_occ, opt.max_mid_occ);
-		fprintf(fp_help, "    --sig-weight-common-hashes STR  weight each hit by 1 / log2(positions + 1): yes/no [%s]\n",
-			opt.sig_weight_common_hashes ? "yes" : "no");
+		fprintf(fp_help, "    --sig-weight-common-hashes STR\n");
+		fprintf(fp_help, "                              weight each hit by 1 / log2(positions + 1): yes/no [%s]\n", opt.sig_weight_common_hashes ? "yes" : "no");
 		fprintf(fp_help, "    --sig-max-hash-occ INT    also ignore hashes with more positions than INT; 0 = off [%u]\n", opt.sig_max_hash_occ);
-		fprintf(fp_help, "    --sig-report-anchor-cap INT   hits kept per read and signature, the heaviest when full [%d]\n",
-			opt.sig_hits_cap);
-		fprintf(fp_help, "    --sig-min-hits INT        min hits for a signature call [%u]\n", opt.sig_min_hits);
-		fprintf(fp_help, "    --sig-min-distinct-hashes INT  min distinct hashes for a signature call [%u]\n", opt.sig_min_distinct_hashes);
-		fprintf(fp_help, "    --sig-min-ratio FLOAT     min best/second score ratio for a signature call [%g]\n", opt.sig_min_ratio);
-		fprintf(fp_help, "    --sig-summary FILE        one row per read: its best signature, the top five and their scores\n");
-		fprintf(fp_help, "    --sig-profile FILE        per-taxon summary at the end of the run\n");
-
-		fprintf(fp_help, "\n  Stream layer (diagonal bands, slope range):\n");
-		fprintf(fp_help, "    --stream-emit-fd INT      write the read records (JSON lines: read, slopes) to file descriptor INT [none]\n");
-		fprintf(fp_help, "    --stream-diag-slopes MIN:MAX:STEP  search grid of the bands' slopes, or one slope [%.2f:%.2f:%.2f]\n",
-			opt.stream_diag_slope_min, opt.stream_diag_slope_max, opt.stream_diag_slope_step);
-		fprintf(fp_help, "    --stream-nonoverlap-gap INT  count the hits at least INT events apart in each band; 0 = off [%u]\n", opt.stream_nonoverlap_gap);
-		fprintf(fp_help, "    --stream-slope-chains INT  renew the slopes from the last INT confident chains; 0 = off [%u]\n", opt.stream_slope_chains);
-		fprintf(fp_help, "    --stream-slope-alpha FLOAT  read p-value at most this makes a chain confident [%g]\n", opt.stream_slope_alpha);
-		fprintf(fp_help, "    --stream-slope-width FLOAT  W of the slope step W / S, in events [%g]\n", opt.stream_slope_width);
-		fprintf(fp_help, "    --slope-grid FLOAT  share of the chains the grid spans, the middle ones [%g]\n", opt.stream_slope_cover);
+		fprintf(fp_help, "    --sig-report-anchor-cap INT\n");
+		fprintf(fp_help, "                              hits kept per read and signature, the heaviest when full [%d]\n", opt.sig_hits_cap);
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Slope grid and diagonal bands:\n");
+		fprintf(fp_help, "    --stream-diag-slopes MIN:MAX:STEP\n");
+		fprintf(fp_help, "                              search grid of the bands' slopes, or one slope [%.2f:%.2f:%.2f]\n", opt.stream_diag_slope_min, opt.stream_diag_slope_max, opt.stream_diag_slope_step);
+		fprintf(fp_help, "    --stream-nonoverlap-gap INT\n");
+		fprintf(fp_help, "                              count the hits at least INT events apart in each band; 0 = off\n");
+		fprintf(fp_help, "                              [%u]\n", opt.stream_nonoverlap_gap);
+		fprintf(fp_help, "    --stream-slope-chains INT\n");
+		fprintf(fp_help, "                              renew the grid from the last INT confident chains; 0 = off [%u]\n", opt.stream_slope_chains);
+		fprintf(fp_help, "    --stream-slope-alpha FLOAT\n");
+		fprintf(fp_help, "                              read p-value at most this makes a chain confident [%g]\n", opt.stream_slope_alpha);
+		fprintf(fp_help, "    --stream-slope-width FLOAT\n");
+		fprintf(fp_help, "                              W of the slope step W / S, in events [%g]\n", opt.stream_slope_width);
 		fprintf(fp_help, "    --stream-slope-width-sd   W is 4 x the median residual SD of the chains [on with --r10]\n");
-
-		fprintf(fp_help, "\n  Read calls and target calls:\n");
-		fprintf(fp_help, "    --panel FILE          panel targets: TSV with columns taxon and name; taxa sharing a name are one target\n");
-		fprintf(fp_help, "                          [each index taxon is a target]\n");
-		fprintf(fp_help, "    --read-calls FILE     one row per read with a candidate target: its read p-value and counts\n");
-		fprintf(fp_help, "    --target-calls FILE   one row per target and test: target call, first call, test statistic\n");
-		fprintf(fp_help, "    --t-min FLOAT         target call averaged over read p-value cutoffs t-min to 1e-3 [%.4g]\n", opt.t_min);
-		fprintf(fp_help, "    --alpha-read A[,B]    instead, a target call at each of these single cutoffs\n");
-		fprintf(fp_help, "    --alpha-run FLOAT     chance of any false target call in a run [%g]\n", opt.alpha_run);
-		fprintf(fp_help, "    --neighbor-check FILE near-neighbor check of the read calls at p <= 1e-3 (or the loosest alpha-read)\n");
-		fprintf(fp_help, "                          against the regions in FILE (neighbor_regions.py), with the -p pore model;\n");
-		fprintf(fp_help, "                          the target call then also runs on the read calls it keeps\n");
+		fprintf(fp_help, "    --slope-grid FLOAT        share of the chains the grid spans, the middle ones [%g]\n", opt.stream_slope_cover);
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Read calls and target calls:\n");
+		fprintf(fp_help, "    --panel FILE              targets: TSV with columns taxon and name; taxa sharing a name\n");
+		fprintf(fp_help, "                              are one target [each index taxon is a target]\n");
+		fprintf(fp_help, "    --read-calls FILE         one row per read with a candidate target: its read p-value and\n");
+		fprintf(fp_help, "                              counts\n");
+		fprintf(fp_help, "    --target-calls FILE       one row per target and test: target call, first call, test\n");
+		fprintf(fp_help, "                              statistic\n");
+		fprintf(fp_help, "    --t-min FLOAT             the target call averages over read p-value cutoffs t-min to 1e-3\n");
+		fprintf(fp_help, "                              [%.4g]\n", opt.t_min);
+		fprintf(fp_help, "    --alpha-read A[,B]        instead, a target call at each of these single cutoffs\n");
+		fprintf(fp_help, "    --alpha-run FLOAT         chance of any false target call in a run [%g]\n", opt.alpha_run);
+		fprintf(fp_help, "    --neighbor-check FILE     near-neighbor check of the read calls at p <= 1e-3 (or the\n");
+		fprintf(fp_help, "                              loosest --alpha-read) against the regions in FILE, with the -p\n");
+		fprintf(fp_help, "                              pore model; the target call then also runs on the calls it keeps\n");
+		fprintf(fp_help, "\n");
+		fprintf(fp_help, "  Debug and analysis outputs:\n");
+		fprintf(fp_help, "    --sig-summary FILE        the --debug table, written to FILE\n");
+		fprintf(fp_help, "    --sig-profile FILE        per-taxon summary at the end of the run\n");
+		fprintf(fp_help, "    --sig-min-hits INT        min hits for the debug tables' signature call [%u]\n", opt.sig_min_hits);
+		fprintf(fp_help, "    --sig-min-distinct-hashes INT\n");
+		fprintf(fp_help, "                              min distinct hashes for the debug tables' signature call [%u]\n", opt.sig_min_distinct_hashes);
+		fprintf(fp_help, "    --sig-min-ratio FLOAT     min best/second score ratio for the debug tables' signature call\n");
+		fprintf(fp_help, "                              [%g]\n", opt.sig_min_ratio);
+		fprintf(fp_help, "    --stream-emit-fd INT      write the read records (JSON lines) to file descriptor INT\n");
+		fprintf(fp_help, "                              [none]\n");
 
 		return fp_help == stdout? 0 : 1;
 	}
 
 	if(n_threads < io_n_threads){
-		fprintf(stderr, "[ERROR] The overall number of threads (-t [%d]) must NOT be smaller than the number of IO threads (--io-thread [%d).\n", n_threads, io_n_threads);
+		fprintf(stderr, "[ERROR] --io-thread (%d) must be at most -t (%d)\n", io_n_threads, n_threads);
 		return 1;
 	}
 
@@ -550,7 +565,7 @@ int main(int argc, char *argv[])
 		}
 		ri_idx_destroy(ri);
 		if (ret < 0) {
-			fprintf(stderr, "ERROR: detection failed\n");
+			fprintf(stderr, "[ERROR] detection failed\n");
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -569,8 +584,6 @@ int main(int argc, char *argv[])
 
 	if (ri_verbose >= 3) {
 		fprintf(stderr, "[M::%s] onsight %s\n", __func__, ONSIGHT_VERSION);
-		// fprintf(stderr, "[M::%s] CMD:", __func__);
-		// for (i = 0; i < argc; ++i) fprintf(stderr, " %s", argv[i]);
 		fprintf(stderr, "\n[M::%s] Real time: %.3f sec; CPU: %.3f sec; Peak RSS: %.3f GB\n", __func__, ri_realtime() - ri_realtime0, ri_cputime(), ri_peakrss() / 1024.0 / 1024.0 / 1024.0);
 	}
 	return 0;

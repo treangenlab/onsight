@@ -1,5 +1,5 @@
-/* neighbor_check.c: the near-neighbor check; see neighbor_check.h. A port of neighbor_check.py's check() (subseq_dtw,
- * near_neighbor_region and the kept_all rule) on the regions written by panel-src/near_neighbors/neighbor_regions.py. Costs are summed in double as in the Python (numba) code, so the decisions match it. */
+/* neighbor_check.c: the near-neighbor check; see neighbor_check.h. Subsequence DTW of the read's events against each
+ * region written by panel-src/near_neighbors/neighbor_regions.py; costs are summed in double. */
 
 #ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
@@ -30,7 +30,6 @@ struct nc_db_s {
 	uint32_t n_sigs, n_genomes, max_cut;
 	uint64_t n_runs;
 	float *z;			/* expected level of each k-mer */
-	uint32_t *name_at;
 	int wide;			/* LCR2: 64-bit base positions */
 	size_t sig_size, reg_size, run_size;
 	const uint8_t *sigs, *regs;
@@ -68,7 +67,7 @@ static inline uint32_t run_len(const nc_db_t *db, uint64_t j)
 	return ((const uint32_t*)(db->runs + j * db->run_size))[1];
 }
 
-/* numpy's pairwise sum, so the z-scores equal encoding_lib.load_model's bit for bit */
+/* Pairwise summation, as numpy's sum, which the z-scores were first checked against bit for bit */
 static double pairwise_sum(const double *a, size_t n)
 {
 	size_t i, n2;
@@ -92,8 +91,8 @@ static double pairwise_sum(const double *a, size_t n)
 	return pairwise_sum(a, n2) + pairwise_sum(a + n2, n - n2);
 }
 
-/* Pore model read as encoding_lib.load_model reads it: "kmer level" lines in ACGT order, an optional "kmer" header;
- * z = (level - mean) / SD over all k-mers, levels parsed to float, sums in double. */
+/* Pore model: "kmer level" lines in ACGT order, an optional "kmer" header; z = (level - mean) / SD over all k-mers,
+ * levels parsed to float, sums in double. */
 static float *load_model(const char *path, int *k)
 {
 	static const char *acgt = "ACGT";
@@ -156,7 +155,7 @@ static float *load_model(const char *path, int *k)
 nc_db_t *nc_load(const char *path, const char *pore_model, int pad)
 {
 	const uint8_t *h;
-	uint32_t max_pad, i, j;
+	uint32_t max_pad, i;
 	uint64_t n_regs, n_bases, name_bytes, size;
 	struct stat st;
 	nc_db_t *db;
@@ -206,11 +205,6 @@ nc_db_t *nc_load(const char *path, const char *pore_model, int pad)
 	db->runs = db->regs + db->reg_size * n_regs;
 	db->names = (const char*)(db->runs + db->run_size * db->n_runs);
 	db->bases = (const uint8_t*)db->names + name_bytes;
-	db->name_at = (uint32_t*)malloc(db->n_genomes * sizeof(uint32_t) + 1);
-	for (i = 0, j = 0; i < db->n_genomes && j < name_bytes; ++i) {
-		db->name_at[i] = j;
-		j += (uint32_t)strlen(db->names + j) + 1;
-	}
 	for (i = 0; i < db->n_sigs; ++i)
 		if (sig_at(db, i)->len > db->max_cut) db->max_cut = sig_at(db, i)->len;
 	db->max_cut += 2 * pad;		/* a cut is the band's span plus the margins, so no longer than this */
@@ -227,7 +221,6 @@ void nc_free(nc_db_t *db)
 	if (!db) return;
 	if (db->map) munmap(db->map, db->map_size);
 	free(db->z);
-	free(db->name_at);
 	free(db);
 }
 
@@ -236,18 +229,9 @@ size_t nc_buf_size(const nc_db_t *db)
 	return 2 * ((size_t)db->max_cut + 1) * sizeof(double) + (size_t)db->max_cut * sizeof(float);
 }
 
-const char *nc_genome_name(const nc_db_t *db, int32_t genome)
-{
-	return genome >= 0 && (uint32_t)genome < db->n_genomes ? db->names + db->name_at[genome] : "-";
-}
 
-uint32_t nc_sig_len(const nc_db_t *db, uint32_t rid)
-{
-	return rid < db->n_sigs ? sig_at(db, rid)->len : 0;
-}
-
-/* Expected levels of bases [from, from + n), of their reverse complement if rc. As encoding_lib.kmer_codes, a base
- * other than A, C, G, T leaves the k-mer as it was. */
+/* Expected levels of bases [from, from + n), of their reverse complement if rc. A base other than A, C, G, T leaves
+ * the k-mer as it was. */
 static uint32_t cut_levels(const nc_db_t *db, uint64_t from, uint32_t n, int rc, float *y)
 {
 	uint64_t lo = 0, hi = db->n_runs, mid, p, j;
@@ -320,9 +304,8 @@ static int band_span(const nc_db_t *db, const nc_sig_t *s, const nc_band_t *band
 	return *n > 0 && *b0 >= 0 && *b1 - *b0 >= db->k && *b1 <= s->len;
 }
 
-/* neighbor_check.near_neighbor_region on the stored window: the genome bases homologous to signature bases [b0, b1), plus the
- * margin. Returns the cut's length; 0 if the hit misses [b0, b1) or the cut has k + 10 bases or fewer, which the
- * Python check skips. */
+/* The stored window's genome bases homologous to signature bases [b0, b1), plus the margin. Returns the cut's length;
+ * 0 if the hit misses [b0, b1) or the cut has k + 10 bases or fewer (skipped). */
 static uint32_t region_cut(const nc_db_t *db, const nc_reg_t *g, int64_t b0, int64_t b1, int64_t *t0)
 {
 	int64_t t1;
@@ -348,7 +331,6 @@ int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_lev
 	uint32_t a, n, m, len, r;
 	double *prev = (double*)buf, *cur = prev + db->max_cut + 1, own, near = HUGE_VAL, cost, stop;
 	float *y = (float*)(cur + db->max_cut + 1);
-	int32_t near_genome = -1;
 	int own_side;
 
 	if (rid >= db->n_sigs || sig_at(db, rid)->len == 0) return -1;
@@ -376,7 +358,6 @@ int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_lev
 				if (cost < own) own = cost;
 			} else if (cost < near) {
 				near = cost;
-				near_genome = (int32_t)(g->flags & NC_GENOME);
 				if (!out && near <= own) break;
 			}
 		}
@@ -384,7 +365,6 @@ int nc_keep(const nc_db_t *db, uint32_t rid, const float *levels, uint32_t n_lev
 	if (out) {
 		out->own = own;
 		out->near = near;
-		out->near_genome = near_genome;
 	}
 	return own < near;	/* HUGE_VAL near: no near neighbor overlaps the band, kept */
 }

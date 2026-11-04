@@ -19,7 +19,7 @@ of its length in the alignment.
 Writes in --out: <build>.tsv (one row: signatures, bp, held-out carriage, background and mock signatures and genomes)
 and <build>.carried.tsv (each background or mock genome that carries a signature, and which).
 
-    conda activate squiggle     # minimap2, skani
+    conda activate onsight-panel  # minimap2, skani
     python3 screen_signatures.py --root <dir> --builds <build,...> --background <genomes.tsv> --taxdump <dir> \
         [--mock-genomes <dir> ...] [--mock-strains panels/mock_strains.tsv] --out <dir>/screen
 """

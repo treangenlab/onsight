@@ -12,7 +12,7 @@ and go against the sets of their own species only.
 Writes <out>/genomes.tsv (genome, file), <out>/taxids.tsv (genome, species_taxid, species = the sets whose signatures
 go against it, ncbi_species_taxid, organism, ani_to_read_sources) and <out>/considered.tsv.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 own_strains.py --targets <near folder>/targets.tsv --test-strains <tsv: species, file> \
         --summary <assembly_summary_refseq.txt> --libraries <dir> [<dir> ...] --taxdump <dir> --out <dir>
 """

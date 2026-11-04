@@ -2,15 +2,14 @@
  *
  * Per read: per signature, its diagonal band counts (diagonal_bands.h); per taxon, its best signature; the read's
  * p-value and call (calls.h); the near-neighbor check of a call at the loosest cutoff (1e-3, or the loosest
- * --alpha-read); the slope refits (slope_range.h). This
- * part depends only on the read and its minibatch's slope grid, so the reads of a minibatch are prepared at once, on
- * all threads (ri_stream_prepare_read). The rest runs once per read in read order (ri_stream_commit_read): the slope
- * ring, the read record on fd 3, and the read and target calls. The grid changes only in ri_stream_end_batch, after
- * the minibatch's last commit.
+ * --alpha-read); the slope refits (slope_range.h). This part depends only on the read and its minibatch's slope
+ * grid, so the reads of a minibatch are prepared at once, on all threads (ri_stream_prepare_read). The rest runs
+ * once per read in read order (ri_stream_commit_read): the slope ring, the read record (--stream-emit-fd), and the
+ * read and target calls. The grid changes only in ri_stream_end_batch, after the minibatch's last commit.
  *
- * In: per read, its seed hits per signature (and its event levels for the near-neighbor check). Out: the read records
- * and slopes lines on fd 3; the read and target calls through calls.h. State: the slope grid and ring, the count of
- * reads committed.
+ * In: per read, its seed hits per signature (and its event levels for the near-neighbor check). Out: the read
+ * records and slopes lines (--stream-emit-fd, off by default); the read and target calls through calls.h. State: the
+ * slope grid and ring, the count of reads committed.
  */
 #ifndef STREAMING_H
 #define STREAMING_H
@@ -32,9 +31,9 @@ typedef struct ri_stream_config_s {
 	int      emit_fd;
 	FILE    *emit_fp;            /* fdopen()'d from emit_fd */
 
-	/* The slopes of the diagonal bands; default 1:1:0, slope 1 only, which is (q - r) / 10. A read whose events run
+	/* The slopes of the diagonal bands; a run starts on the search grid (--stream-diag-slopes). A read whose events run
 	 * faster or slower than the signature's positions (real reads: about 1.05-1.1) spreads one true chain over several
-	 * slope-1 bands. With slope_chains the grid at the start is the search grid. */
+	 * slope-1 bands. */
 	ri_slope_grid_t grid;
 
 	/* > 0: the read records list, per taxon, the non-overlapping hit counts of its signatures: hits at least this many

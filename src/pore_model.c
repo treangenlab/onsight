@@ -75,7 +75,7 @@ void ri_pore_load(const char* fpore, const short k, const short lev_col, ri_pore
 	char line[1024];
 	char* token;
 	int i = 0;
-    double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
+    double mean = 0, std_dev = 0, sum = 0, sum2 = 0;
 
 	while(fgets(line, sizeof(line), fp) != NULL){
 		if(!strncmp(line, "kmer", 4)) continue;

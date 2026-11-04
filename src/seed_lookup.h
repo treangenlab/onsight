@@ -24,12 +24,8 @@ typedef struct {
 	const uint64_t *cr; // the positions
 } ri_seed_t;
 
-/**
- * @brief The read's seeds found in the index, without those whose hash has more than max_occ
- * positions (the repeat cutoff, ri_detopt_update).
- *
- * @return Pointer to the collected seeds (*_n_seed_m of them). Needs to be freed.
- */
+/* The read's seeds found in the index, without those whose hash has more than max_occ positions (the repeat
+ * cutoff, ri_detopt_update); *_n_seed_m of them, freed by the caller. */
 ri_seed_t *ri_seed_lookup(void *km,
                               int *_n_seed_m,
                               int max_occ,

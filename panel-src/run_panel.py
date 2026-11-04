@@ -19,7 +19,7 @@
   extra_near_strains
                     a list of read-source genomes (file in inputs): this target gets more strains per near-neighbor
                     species (near_neighbor_strains.py)
---paths (panels/paths.tsv): inputs (folders with assemblies.tsv, checkm.tsv and read-source lists), background,
+--paths (for example panels/example_paths.tsv): inputs (folders with assemblies.tsv, checkm.tsv and read-source lists), background,
 taxdump, mock_genomes (comma separated), mock_strains, skani, seqwin_python (Seqwin's conda env), refseq_summary,
 refseq_libraries (comma separated), the folders that test_strains name, blastn, makeblastdb, onsight (the binary
 that builds the indexes); relative paths are read from the paths file's folder, and a bare name (skani, blastn) is a
@@ -42,8 +42,8 @@ Layout of --root:
                                  paf/)
   <panel>/logs/<step>.log        each step's output
 
-    conda activate squiggle     # minimap2 and skani on PATH for the screen
-    python3 run_panel.py --config panels/eskape.tsv --paths panels/paths.tsv --root <dir> [--steps lists,seqwin]
+    conda activate onsight-panel  # minimap2 and skani on PATH for the screen
+    python3 run_panel.py --config panels/eskape.tsv --paths mypaths.tsv --root <dir> [--steps lists,seqwin]
 """
 import argparse
 import csv

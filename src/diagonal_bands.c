@@ -327,8 +327,7 @@ double ri_band_pvalue_buf(ri_band_buf_t *b, uint32_t m, uint32_t units, uint32_t
 	return p;
 }
 
-/* Exact ties go to the first slope and then to the band met first in (q, r) order, as the Python near-neighbor check's
- * engine_band. */
+/* Exact ties go to the first slope and then to the band met first in (q, r) order. */
 int ri_band_box(const ri_sig_hits_t *s, const ri_slope_grid_t *g, uint32_t gap, ri_band_buf_t *x, nc_band_t *box)
 {
 	uint32_t i, j, k, t, nb, n = s->n_hits, n_slopes = ri_grid_n_slopes(g), cap = 16, best = 1, best_x = 1;

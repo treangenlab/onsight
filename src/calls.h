@@ -1,28 +1,22 @@
-/* calls.h: read calls and target calls.
+/* calls.h: read calls and target calls (derivations in the paper's Methods).
  *
  * Read p-value, per read and panel entry s: p_s = n_slopes x B x P[Bin(n, 1/B) >= m] x n_sigs[s], from the signature
- * of s with the smallest band p-value (diagonal_bands.h, --stream-nonoverlap-gap): m its non-overlapping hit count, n its
- * non-overlapping hits over all bands, B = (read events + signature length) / 10 the bands a chance hit could fall
- * in, n_sigs[s] the index's signatures of s. The read is called for the entry with the smallest p when
- * p <= alpha_read. Port of read_pvalues / add_read_pvalues in scripts/lib/stream_replay.py.
+ * of s with the smallest band p-value (diagonal_bands.h): m its non-overlapping hit count, n its non-overlapping hits
+ * over all bands, B = (read events + signature length) / 10 the bands a chance hit could fall in, n_sigs[s] the
+ * index's signatures of s. The read is called for the entry with the smallest p when p <= alpha_read.
  *
- * Target call at one cutoff alpha_read: c read calls in the first n reads; the likelihood ratio of a call rate p
- * against p0 = alpha_read, averaged over a log-uniform p on [p0, 1], is
+ * Target call at one cutoff (--alpha-read): with c read calls in the first n reads, the likelihood ratio of a call
+ * rate p against p0 = alpha_read, averaged over a log-uniform p on [p0, 1], is
  *   LR = P[Bin(n, p0) <= c - 1] / (c x P[Bin(n, p0) = c] x ln(1/p0)).
- * The entry is called when log LR >= ln(K / alpha_run), K the panel entries; by Ville's inequality the chance of any
- * false target call in the run is at most alpha_run. Port of scripts/lib/target_call.py.
+ * Target call averaged over cutoffs (the default): M = (1/L) int LR_t(c(t), n) dt/t over t in [t_min, 1e-3], with
+ * L = ln(1e-3 / t_min) and c(t) the calls at p <= t. An entry is called when ln LR (or ln M) >= ln(K / alpha_run), K the
+ * panel entries; by Ville's inequality the chance of any false target call in the run is at most alpha_run.
  *
- * Target call averaged over cutoffs (the default): with c(t) the calls at p <= t,
- * M = (1/L) int LR_t(c(t), n) dt/t over t log-uniform on [t_min, 1e-3], L = ln(1e-3 / t_min); the entry is called when
- * ln M >= ln(K / alpha_run). An average of the supermartingales LR_t is one too, so the same bound holds. --alpha-read
- * switches to single cutoffs.
+ * Panel entries come from --panel (rows sharing a name are one entry, e.g. the genus Enterobacter from 25 species
+ * sets); without it each index taxon is an entry.
  *
- * Panel entries come from --panel (columns taxon and name; rows sharing a name are one entry, e.g. the genus
- * Enterobacter from 25 species sets); without it each index taxon is an entry.
- *
- * In: per read, its signature sets (diagonal_bands.h counts, per taxon) and its near-neighbor check. Out: the
- * --read-calls rows, and at the end the --target-calls table. State: per panel entry, its read calls so far and its
- * test, changed in read order.
+ * In: per read, its signature sets and its near-neighbor check. Out: the --read-calls rows and, at the end, the
+ * --target-calls table. State: per entry, its read calls and its test, changed in read order.
  */
 #ifndef CALLS_H
 #define CALLS_H

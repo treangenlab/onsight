@@ -13,7 +13,7 @@ databases) is removed at the end.
 --reuse <folder>: a genome already searched there with the same panel species keeps that folder's blastn hits
 (copied) instead of a new search; homolog_counts.tsv then also says which genomes were reused.
 
-    conda activate squiggle
+    conda activate onsight-panel
     python3 blast_homologs.py --folder <dir> --signatures <signatures.fasta> --metadata <signatures.csv> \
       --blastn <blastn> --makeblastdb <makeblastdb> --processes 20
 """

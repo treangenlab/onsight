@@ -25,16 +25,7 @@ float* normalize_signal(void *km,
 						double* std_dev_sum,
 						uint32_t* n_events_sum,
 						uint32_t* n_sig);
-/**
- * Detects events from signals
- *
- * @param km	thread-local memory pool; using NULL falls back to malloc()
- * @param s_len	length of $sig
- * @param sig	signal values
- * @param n		number of events
- * 
- * @return		list of event values of length $n
- */
+/* The events of a signal of s_len samples, *n_events of them; km: the thread's memory pool (NULL: malloc). */
 float* detect_events(void *km,
 					 const uint32_t s_len,
 					 const float* sig,
