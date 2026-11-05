@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="doc/logo_dark.png">
+    <img src="doc/logo.png" alt="onsight" width="480">
+  </picture>
+</p>
+
 # onsight
 
 **Pathogen detection on nanopore raw signal, during the run, on CPU only. No basecalling, no GPU.**
@@ -19,7 +26,7 @@ Reads **FAST5, POD5, SLOW5 and BLOW5**, from R9.4.1 or R10.4.1 flow cells.
 ## Install
 
 ```bash
-git clone https://github.com/eh58/onsight.git
+git clone https://github.com/treangenlab/onsight.git
 cd onsight
 git submodule update --init extern/slow5lib
 conda env create -f environment.yml
@@ -46,7 +53,7 @@ with `make install PREFIX=/your/path` and undo it with `make uninstall`. Without
 ### Without conda
 
 ```bash
-git clone --recursive https://github.com/eh58/onsight.git
+git clone --recursive https://github.com/treangenlab/onsight.git
 cd onsight
 make -j 8
 ```
@@ -57,12 +64,38 @@ its folder.
 
 ---
 
+## Try the example
+
+`example/` holds a small panel and 160 simulated reads, to check that onsight runs:
+
+```bash
+conda activate onsight
+onsight --pore r10 --panel-dir example/panel -o example_out/ -t 4 example/reads.pod5
+```
+
+It takes a few seconds and about 0.3 GB of memory. In `example_out/target_calls.tsv`, the rows with rule
+`read_pvalue+neighbor_check` should show *S. aureus* called at read 4 and *E. faecalis* at read 9
+(`first_call_reads`); `first_call_time_s` depends on the machine.
+
+| File | What it is |
+|---|---|
+| `example/panel/` | a two-target panel: the signatures and near-neighbor regions of *S. aureus* and *E. faecalis* in the 24-target panel, with an R10.4.1 index only |
+| `example/reads.pod5` | 160 R10.4.1 reads simulated with squigulator, in run order: 20 each of *S. aureus*, *E. faecalis* and their near neighbors *S. epidermidis* and *E. faecium*, and 80 of two gut species (*Bacteroides difficilis*, *Faecalibacterium prausnitzii*) |
+| `example/truth.tsv` | the species of each read, to compare with `example_out/read_calls.tsv` |
+
+---
+
 ## Run
 
 ### 1. Get a panel
 
-A panel is one folder. Download it from the link you were given, or build your own (below), and keep it anywhere;
-you only pass its path.
+A panel is one folder. Download the 24-target panel from [Zenodo](https://zenodo.org/records/23967694), or build your
+own (below), and keep it anywhere; you only pass its path. `example/panel` is a small one to try.
+
+```bash
+wget https://zenodo.org/records/23967694/files/panel24.tar.gz      # 2.7 GB
+tar -xzf panel24.tar.gz                                             # makes panel24/
+```
 
 ```
 panel24/
@@ -71,6 +104,11 @@ panel24/
 ├── r9/index.idx               index for R9.4.1 reads, with r9/index.idx.sigmeta.tsv
 └── r10/index.idx              index for R10.4.1 reads, with r10/index.idx.sigmeta.tsv
 ```
+
+The download also has `signatures/` (the signatures as FASTA and table, which onsight does not read) and `md5sums.txt`
+(`md5sum -c md5sums.txt` in the folder checks the files). The same record has the simulated reads of the paper,
+`sim_r9.tar.gz` (27 GB) and `sim_r10.tar.gz` (38 GB): three sets per pore, each with its POD5, squigulator's
+alignments and the species of every read.
 
 ### 2. Detect
 
@@ -189,15 +227,6 @@ Debug and sanitizer builds: `make DEBUG=1`, `make asan=1`, `make tsan=1`. Per-st
 (`bin/onsight-prof`, same results; see `src/onsprof.h` and `scripts/hw_prof/`).
 
 The version is the number in `VERSION` (`onsight --version`).
-
-**Changes**
-
-* 0.1.0: first public release. Near-neighbor p-value (a read call counts with the larger of its read p-value and its near-neighbor p-value); read calls of targets already called are not checked (`--neighbor-check-all` checks them); bands numbered by floor, so band 0 is as wide as the others; event detection sums in double; comments, help text and build clean-up; `FP_CONTRACT`.
-* 0.0.3, the paper's version: the averaged target call starts at t_min 1e-8; the slope grid spans the middle 95% of
-  the last 199 confident chains (`--slope-grid`); `--debug`; 2.5–8 times less CPU with the same results; POD5 files
-  are read without memory mapping.
-* 0.0.2: region files past 4.29 billion stored bases (LCR2, 64-bit positions) as well as LCR1; `panel-src/`, the panel
-  build. The 24-target panel's `regions.lcr` is LCR2.
 
 > **Platform note:** POD5 ships prebuilt libraries only for linux-x64, linux-arm64, and
 > osx-arm64. On Windows, Intel macOS, or musl, build with `ENABLE_POD5=OFF`.
